@@ -11,7 +11,9 @@
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
 
     <!-- Hier wird die App hineingeladen -->
-    <div id="app" class="pb-12"></div>
+    <div id="app" class="pb-12">
+        <div class="text-center mt-20 text-teal-600 font-bold animate-pulse">Lade EquiMatch...</div>
+    </div>
 
     <!-- Firebase & App Logik -->
     <script type="module">
@@ -21,15 +23,22 @@
 
         // --- KONFIGURATION ---
         // Wenn du das auf GitHub hostest, trage hier später deine eigenen Firebase-Daten ein!
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // Dummy Config für GitHub (Hier musst du später dein eigenes Firebase-Projekt verlinken)
-            projectId: "equimatch-demo" 
+        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : {
+            // Dummy Config für GitHub
+            apiKey: "dummy-key",
+            projectId: "equimatch-demo",
+            appId: "1:123:web:456"
         };
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'equimatch-github-v1';
 
-        const appInit = initializeApp(firebaseConfig);
-        const auth = getAuth(appInit);
-        const db = getFirestore(appInit);
+        let appInit, auth, db;
+        try {
+            appInit = initializeApp(firebaseConfig);
+            auth = getAuth(appInit);
+            db = getFirestore(appInit);
+        } catch(e) {
+            console.warn("Firebase Setup Fehler (Offline Modus aktiviert):", e);
+        }
 
         // --- STATE MANAGEMENT ---
         let state = {
@@ -44,32 +53,43 @@
 
         const appDiv = document.getElementById('app');
 
+        // Initialer Render-Aufruf, damit der Bildschirm nie weiß bleibt
+        render();
+
         // --- AUTHENTIFIZIERUNG ---
         async function initAuth() {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
+                if (auth) {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
                 } else {
-                    await signInAnonymously(auth);
+                    throw new Error("Kein Auth-Modul");
                 }
             } catch (error) {
-                console.warn("Auth Info (Normal auf GitHub ohne DB):", error.message);
+                console.warn("Offline Demo Modus aktiviert.");
+                state.user = { uid: 'local-user-' + Math.random().toString(36).substr(2, 9) };
                 state.view = 'role_select';
                 render();
             }
         }
 
-        onAuthStateChanged(auth, (user) => {
-            state.user = user;
-            if (user) {
-                loadData();
-            } else {
-                state.view = 'role_select';
-                render();
-            }
-        });
-
-        initAuth();
+        if (auth) {
+            onAuthStateChanged(auth, (user) => {
+                state.user = user;
+                if (user) {
+                    loadData();
+                } else {
+                    state.view = 'role_select';
+                    render();
+                }
+            });
+        } else {
+            // Falls auth nicht geladen werden konnte, direkt starten
+            initAuth();
+        }
 
         // --- DATEN LADEN ---
         function loadData() {
@@ -122,8 +142,16 @@
                 about: document.getElementById('t_about').value,
             };
             try {
+                if(!db) throw new Error("Offline");
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'talents', state.user.uid), data);
-            } catch(e) { alert("Datenbank nicht verbunden. (Auf GitHub eigenes Firebase nötig)"); }
+            } catch(e) { 
+                // Offline Fallback: Direkt im Browser speichern
+                state.profile = data;
+                state.role = 'talent';
+                state.view = 'dashboard';
+                state.talents.push(data);
+                render();
+            }
         };
 
         window.saveCompany = async () => {
@@ -135,8 +163,19 @@
                 perks: document.getElementById('c_perks').value,
             };
             try {
+                if(!db) throw new Error("Offline");
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'companies', state.user.uid), data);
-            } catch(e) { alert("Datenbank nicht verbunden."); }
+            } catch(e) { 
+                // Offline Fallback
+                state.profile = data;
+                state.role = 'company';
+                state.view = 'dashboard';
+                state.companies.push(data);
+                
+                // Demo Talent hinzufügen, damit die Firma jemanden zum Anschreiben hat
+                state.talents.push({ uid: 'demo-1', title: 'UX Designer', experience: 4, salary: 55000, health: 8, about: 'Transparente Kommunikation ist mir wichtig.' });
+                render();
+            }
         };
 
         window.applyToTalent = async (talentId) => {
@@ -144,21 +183,34 @@
             const msg = prompt("Nachricht an das Talent (Warum passt eure Kultur?):");
             if (!msg) return;
             
+            const appData = {
+                id: 'app-' + Math.random().toString(36).substr(2, 9),
+                companyId: state.user.uid,
+                companyName: state.profile.name,
+                talentId: talentId,
+                message: msg,
+                status: 'pending'
+            };
+
             try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'applications'), {
-                    companyId: state.user.uid,
-                    companyName: state.profile.name,
-                    talentId: talentId,
-                    message: msg,
-                    status: 'pending'
-                });
-            } catch(e) { alert("Datenbank nicht verbunden."); }
+                if(!db) throw new Error("Offline");
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'applications'), appData);
+            } catch(e) { 
+                state.applications.push(appData);
+                render();
+                alert("Anfrage erfolgreich simuliert! (Offline Demo)");
+            }
         };
 
         window.updateAppStatus = async (appIdToUpdate, status) => {
             try {
+                if(!db) throw new Error("Offline");
                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'applications', appIdToUpdate), { status });
-            } catch(e) { alert("Datenbank Fehler"); }
+            } catch(e) { 
+                const application = state.applications.find(a => a.id === appIdToUpdate || a.talentId === state.user.uid);
+                if(application) application.status = status;
+                render();
+            }
         };
 
         // --- UI RENDERER ---
@@ -288,5 +340,6 @@
     </script>
 </body>
 </html>
+
 
 
