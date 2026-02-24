@@ -20,16 +20,19 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-     // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDzN7StXcxZVkYcs3pQBh1rAYypqKF54PE",
-  authDomain: "equimatch-a9a03.firebaseapp.com",
-  projectId: "equimatch-a9a03",
-  storageBucket: "equimatch-a9a03.firebasestorage.app",
-  messagingSenderId: "1064864391538",
-  appId: "1:1064864391538:web:ceeca48c28a9e7a63f3deb",
-  measurementId: "G-8RGBYGNGED"
-};
+        // ==========================================
+        // ✅ ECHTE DATENBANK VERBUNDEN
+        // ==========================================
+        const firebaseConfig = {
+          apiKey: "AIzaSyDzN7StXcxZVkYcs3pQBh1rAYypqKF54PE",
+          authDomain: "equimatch-a9a03.firebaseapp.com",
+          projectId: "equimatch-a9a03",
+          storageBucket: "equimatch-a9a03.firebasestorage.app",
+          messagingSenderId: "1064864391538",
+          appId: "1:1064864391538:web:ceeca48c28a9e7a63f3deb",
+          measurementId: "G-8RGBYGNGED"
+        };
+        // ==========================================
 
         let appInit, auth, db;
         let state = { user: null, view: 'loading', role: null, profile: null, talents: [], companies: [], applications: [] };
@@ -38,9 +41,6 @@ const firebaseConfig = {
 
         // 1. Initialisierung mit Fehlerabfang (Verhindert weißen Bildschirm)
         try {
-            if(firebaseConfig.apiKey === "DEIN_API_KEY_HIER") {
-                throw new Error("Bitte trage deine Firebase-Daten im Code ein!");
-            }
             appInit = initializeApp(firebaseConfig);
             auth = getAuth(appInit);
             db = getFirestore(appInit);
@@ -103,34 +103,55 @@ const firebaseConfig = {
         window.setView = (view) => { state.view = view; render(); };
         
         window.saveTalent = async () => {
-            const data = {
-                uid: state.user.uid,
-                title: document.getElementById('t_title').value,
-                health: document.getElementById('t_health').value,
-                about: document.getElementById('t_about').value
-            };
-            await setDoc(doc(db, 'talents', state.user.uid), data);
+            if (!state.user) {
+                alert("Fehler: Du bist nicht verbunden. Hast du 'Anonym' in der Firebase Authentication aktiviert?");
+                return;
+            }
+            try {
+                const data = {
+                    uid: state.user.uid,
+                    title: document.getElementById('t_title').value,
+                    health: document.getElementById('t_health').value,
+                    about: document.getElementById('t_about').value
+                };
+                await setDoc(doc(db, 'talents', state.user.uid), data);
+            } catch (error) {
+                alert("Datenbank-Fehler beim Speichern: " + error.message);
+            }
         };
 
         window.saveCompany = async () => {
-            const data = {
-                uid: state.user.uid,
-                name: document.getElementById('c_name').value,
-                culture: document.getElementById('c_culture').value
-            };
-            await setDoc(doc(db, 'companies', state.user.uid), data);
+            if (!state.user) {
+                alert("Fehler: Du bist nicht verbunden. Hast du 'Anonym' in der Firebase Authentication aktiviert?");
+                return;
+            }
+            try {
+                const data = {
+                    uid: state.user.uid,
+                    name: document.getElementById('c_name').value,
+                    culture: document.getElementById('c_culture').value
+                };
+                await setDoc(doc(db, 'companies', state.user.uid), data);
+            } catch (error) {
+                alert("Datenbank-Fehler beim Speichern: " + error.message);
+            }
         };
 
         window.applyToTalent = async (talentId) => {
+            if (!state.user) return;
             const msg = prompt("Warum passt eure Kultur zu diesem Talent?");
             if (!msg) return;
-            await addDoc(collection(db, 'applications'), {
-                companyId: state.user.uid,
-                companyName: state.profile.name,
-                talentId: talentId,
-                message: msg
-            });
-            alert("Anfrage versendet!");
+            try {
+                await addDoc(collection(db, 'applications'), {
+                    companyId: state.user.uid,
+                    companyName: state.profile.name,
+                    talentId: talentId,
+                    message: msg
+                });
+                alert("Anfrage erfolgreich versendet!");
+            } catch (error) {
+                alert("Fehler beim Versenden: " + error.message);
+            }
         };
 
         // 4. UI Renderer
@@ -210,5 +231,7 @@ const firebaseConfig = {
     </script>
 </body>
 </html>
+
+
 
 
