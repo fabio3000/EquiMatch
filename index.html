@@ -5,116 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EquiMatch | Gesunde Arbeitswelt</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <style>body { font-family: sans-serif; }</style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+<body class="bg-slate-50 text-slate-800 min-h-screen">
 
-    <!-- Hier wird die App hineingeladen -->
+    <!-- App Container -->
     <div id="app" class="pb-12">
-        <div class="text-center mt-20 text-teal-600 font-bold animate-pulse">Lade EquiMatch...</div>
+        <div class="text-center mt-20 text-teal-600 font-bold animate-pulse">Lade System...</div>
     </div>
 
-    <!-- Firebase & App Logik -->
+    <!-- Firebase & Logik -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- KONFIGURATION ---
-        // Wenn du das auf GitHub hostest, trage hier später deine eigenen Firebase-Daten ein!
-        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : {
-            // Dummy Config für GitHub
-            apiKey: "dummy-key",
-            projectId: "equimatch-demo",
-            appId: "1:123:web:456"
+        // ==========================================
+        // 🛑 DEINE DATENBANK-DATEN HIER EINTRAGEN 🛑
+        // ==========================================
+        // Gehe auf firebase.google.com -> Console -> Projekt erstellen -> Web-App hinzufügen.
+        // Kopiere die Werte aus dem "firebaseConfig" Block hier hinein:
+        const firebaseConfig = {
+            apiKey: "DEIN_API_KEY_HIER",
+            authDomain: "dein-projekt.firebaseapp.com",
+            projectId: "dein-projekt-id",
+            storageBucket: "dein-projekt.firebasestorage.app",
+            messagingSenderId: "123456789",
+            appId: "1:12345:web:abcde"
         };
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'equimatch-github-v1';
+        // ==========================================
 
         let appInit, auth, db;
-        try {
-            appInit = initializeApp(firebaseConfig);
-            auth = getAuth(appInit);
-            db = getFirestore(appInit);
-        } catch(e) {
-            console.warn("Firebase Setup Fehler (Offline Modus aktiviert):", e);
-        }
-
-        // --- STATE MANAGEMENT ---
-        let state = {
-            user: null,
-            view: 'loading', // loading, role_select, talent_onboarding, company_onboarding, dashboard
-            role: null,      // talent, company
-            profile: null,
-            talents: [],
-            companies: [],
-            applications: []
-        };
+        let state = { user: null, view: 'loading', role: null, profile: null, talents: [], companies: [], applications: [] };
 
         const appDiv = document.getElementById('app');
 
-        // Initialer Render-Aufruf, damit der Bildschirm nie weiß bleibt
-        render();
-
-        // --- AUTHENTIFIZIERUNG ---
-        async function initAuth() {
-            try {
-                if (auth) {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } else {
-                    throw new Error("Kein Auth-Modul");
-                }
-            } catch (error) {
-                console.warn("Offline Demo Modus aktiviert.");
-                state.user = { uid: 'local-user-' + Math.random().toString(36).substr(2, 9) };
-                state.view = 'role_select';
-                render();
+        // 1. Initialisierung mit Fehlerabfang (Verhindert weißen Bildschirm)
+        try {
+            if(firebaseConfig.apiKey === "DEIN_API_KEY_HIER") {
+                throw new Error("Bitte trage deine Firebase-Daten im Code ein!");
             }
-        }
-
-        if (auth) {
+            appInit = initializeApp(firebaseConfig);
+            auth = getAuth(appInit);
+            db = getFirestore(appInit);
+            
+            // Anonyme Anmeldung starten
+            signInAnonymously(auth).catch(e => { throw new Error("Firebase Auth muss in der Console aktiviert werden (Anonym)."); });
+            
             onAuthStateChanged(auth, (user) => {
                 state.user = user;
-                if (user) {
-                    loadData();
-                } else {
-                    state.view = 'role_select';
-                    render();
-                }
+                if (user) loadData();
+                else { state.view = 'role_select'; render(); }
             });
-        } else {
-            // Falls auth nicht geladen werden konnte, direkt starten
-            initAuth();
+
+        } catch(error) {
+            appDiv.innerHTML = `
+                <div class="max-w-2xl mx-auto mt-20 p-8 bg-red-50 border-l-4 border-red-500 rounded-xl">
+                    <h2 class="text-2xl font-bold text-red-700 mb-4">Datenbank-Setup fehlt!</h2>
+                    <p class="mb-4">${error.message}</p>
+                    <ol class="list-decimal pl-5 space-y-2 font-medium">
+                        <li>Gehe zu <a href="https://firebase.google.com" target="_blank" class="text-blue-600 underline">firebase.google.com</a> und erstelle ein Projekt.</li>
+                        <li>Füge eine "Web-App" (</>) hinzu.</li>
+                        <li>Kopiere die config-Daten in Zeile 23-28 dieser HTML-Datei.</li>
+                        <li>Aktiviere in Firebase unter "Build -> Authentication" den Anbieter "Anonym".</li>
+                        <li>Aktiviere "Build -> Firestore Database" im Testmodus.</li>
+                    </ol>
+                </div>
+            `;
         }
 
-        // --- DATEN LADEN ---
+        // 2. Daten laden (Echtzeit)
         function loadData() {
-            if (!state.user) return;
-            const getColRef = (name) => collection(db, 'artifacts', appId, 'public', 'data', name);
-
             try {
-                onSnapshot(getColRef('talents'), (snap) => {
+                onSnapshot(collection(db, 'talents'), (snap) => {
                     state.talents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     checkProfile(); render();
-                }, (err) => console.error(err));
-
-                onSnapshot(getColRef('companies'), (snap) => {
+                });
+                onSnapshot(collection(db, 'companies'), (snap) => {
                     state.companies = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     checkProfile(); render();
-                }, (err) => console.error(err));
-
-                onSnapshot(getColRef('applications'), (snap) => {
+                });
+                onSnapshot(collection(db, 'applications'), (snap) => {
                     state.applications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                     render();
-                }, (err) => console.error(err));
-            } catch (e) {
-                // Fallback falls DB fehlt
-                state.view = 'role_select';
-                render();
+                });
+            } catch(e) {
+                console.error("Datenbank-Lesefehler:", e);
             }
         }
 
@@ -122,213 +98,112 @@
             if (!state.user) return;
             const myTalent = state.talents.find(t => t.uid === state.user.uid);
             const myCompany = state.companies.find(c => c.uid === state.user.uid);
-            
             if (myTalent) { state.profile = myTalent; state.role = 'talent'; state.view = 'dashboard'; }
             else if (myCompany) { state.profile = myCompany; state.role = 'company'; state.view = 'dashboard'; }
             else if (state.view === 'loading') { state.view = 'role_select'; }
         }
 
-        // --- GLOBALE AKTIONEN (Für HTML Buttons) ---
+        // 3. Aktionen
         window.setView = (view) => { state.view = view; render(); };
         
         window.saveTalent = async () => {
-            if (!state.user) return;
             const data = {
                 uid: state.user.uid,
                 title: document.getElementById('t_title').value,
-                experience: document.getElementById('t_exp').value,
-                salary: document.getElementById('t_salary').value,
                 health: document.getElementById('t_health').value,
-                about: document.getElementById('t_about').value,
+                about: document.getElementById('t_about').value
             };
-            try {
-                if(!db) throw new Error("Offline");
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'talents', state.user.uid), data);
-            } catch(e) { 
-                // Offline Fallback: Direkt im Browser speichern
-                state.profile = data;
-                state.role = 'talent';
-                state.view = 'dashboard';
-                state.talents.push(data);
-                render();
-            }
+            await setDoc(doc(db, 'talents', state.user.uid), data);
         };
 
         window.saveCompany = async () => {
-            if (!state.user) return;
             const data = {
                 uid: state.user.uid,
                 name: document.getElementById('c_name').value,
-                culture: document.getElementById('c_culture').value,
-                perks: document.getElementById('c_perks').value,
+                culture: document.getElementById('c_culture').value
             };
-            try {
-                if(!db) throw new Error("Offline");
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'companies', state.user.uid), data);
-            } catch(e) { 
-                // Offline Fallback
-                state.profile = data;
-                state.role = 'company';
-                state.view = 'dashboard';
-                state.companies.push(data);
-                
-                // Demo Talent hinzufügen, damit die Firma jemanden zum Anschreiben hat
-                state.talents.push({ uid: 'demo-1', title: 'UX Designer', experience: 4, salary: 55000, health: 8, about: 'Transparente Kommunikation ist mir wichtig.' });
-                render();
-            }
+            await setDoc(doc(db, 'companies', state.user.uid), data);
         };
 
         window.applyToTalent = async (talentId) => {
-            if (!state.user || !state.profile) return;
-            const msg = prompt("Nachricht an das Talent (Warum passt eure Kultur?):");
+            const msg = prompt("Warum passt eure Kultur zu diesem Talent?");
             if (!msg) return;
-            
-            const appData = {
-                id: 'app-' + Math.random().toString(36).substr(2, 9),
+            await addDoc(collection(db, 'applications'), {
                 companyId: state.user.uid,
                 companyName: state.profile.name,
                 talentId: talentId,
-                message: msg,
-                status: 'pending'
-            };
-
-            try {
-                if(!db) throw new Error("Offline");
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'applications'), appData);
-            } catch(e) { 
-                state.applications.push(appData);
-                render();
-                alert("Anfrage erfolgreich simuliert! (Offline Demo)");
-            }
+                message: msg
+            });
+            alert("Anfrage versendet!");
         };
 
-        window.updateAppStatus = async (appIdToUpdate, status) => {
-            try {
-                if(!db) throw new Error("Offline");
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'applications', appIdToUpdate), { status });
-            } catch(e) { 
-                const application = state.applications.find(a => a.id === appIdToUpdate || a.talentId === state.user.uid);
-                if(application) application.status = status;
-                render();
-            }
-        };
-
-        // --- UI RENDERER ---
+        // 4. UI Renderer
         function render() {
+            if (state.view === 'loading') return;
+
             let html = `
-                <nav class="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+                <nav class="bg-white p-4 shadow-sm flex justify-between items-center mb-8">
                     <div class="text-xl font-bold text-teal-600">EquiMatch.</div>
-                    <div class="text-sm font-medium text-slate-500">${state.profile?.name || state.profile?.title || 'Gast'}</div>
+                    <div class="text-sm text-slate-500">${state.profile?.name || state.profile?.title || 'Anonym'}</div>
                 </nav>
-                <div class="max-w-5xl mx-auto p-6 mt-6">
+                <div class="max-w-4xl mx-auto px-4">
             `;
 
-            if (state.view === 'loading') {
-                html += `<div class="text-center mt-20 text-teal-600 font-bold">Verbinde zur sicheren Umgebung...</div>`;
-            } 
-            else if (state.view === 'role_select') {
+            if (state.view === 'role_select') {
                 html += `
-                    <div class="text-center mb-12 mt-10">
-                        <h1 class="text-4xl font-bold text-slate-900 mb-4">Willkommen bei <span class="text-teal-600">EquiMatch</span></h1>
-                        <p class="text-slate-600">Der Jobmarkt, der mentale Gesundheit und Begegnungen auf Augenhöhe priorisiert.</p>
-                    </div>
+                    <div class="text-center mb-10"><h1 class="text-3xl font-bold">Fokus auf Mental Health & Kultur</h1></div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <button onclick="window.setView('talent_onboarding')" class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 hover:border-teal-400 transition text-left">
-                            <h2 class="text-2xl font-bold text-slate-800 mb-2">Ich bin ein Talent</h2>
-                            <p class="text-slate-500">Anonymes Profil erstellen. Firmen bewerben sich bei dir.</p>
+                        <button onclick="window.setView('talent')" class="p-8 bg-white rounded-xl shadow border border-slate-200 hover:border-teal-400">
+                            <h2 class="text-xl font-bold mb-2">Ich bin ein Talent</h2><p class="text-sm text-slate-500">Profil anlegen & gefunden werden.</p>
                         </button>
-                        <button onclick="window.setView('company_onboarding')" class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 hover:border-indigo-400 transition text-left">
-                            <h2 class="text-2xl font-bold text-slate-800 mb-2">Wir sind ein Unternehmen</h2>
-                            <p class="text-slate-500">Talente finden, die zu eurer gesunden Unternehmenskultur passen.</p>
+                        <button onclick="window.setView('company')" class="p-8 bg-white rounded-xl shadow border border-slate-200 hover:border-teal-400">
+                            <h2 class="text-xl font-bold mb-2">Wir sind eine Firma</h2><p class="text-sm text-slate-500">Gesunde Talente finden.</p>
                         </button>
                     </div>
                 `;
             }
-            else if (state.view === 'talent_onboarding') {
+            else if (state.view === 'talent') {
                 html += `
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 max-w-xl mx-auto">
-                        <button onclick="window.setView('role_select')" class="text-slate-400 text-sm mb-6">← Zurück</button>
-                        <h2 class="text-2xl font-bold mb-2">Dein anonymes Profil</h2>
-                        <p class="text-slate-500 mb-6">Schütze deine Privatsphäre.</p>
-                        
-                        <input id="t_title" type="text" placeholder="Beruf (z.B. Designer)" class="w-full p-3 bg-slate-50 rounded-xl mb-4 border border-slate-200">
-                        <div class="flex gap-4 mb-4">
-                            <input id="t_exp" type="number" placeholder="Jahre Erfahrung" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200">
-                            <input id="t_salary" type="number" placeholder="Wunschgehalt (€)" class="w-full p-3 bg-slate-50 rounded-xl border border-slate-200">
-                        </div>
-                        <label class="block text-sm font-semibold mb-1">Wichtigkeit Mentale Gesundheit (1-10)</label>
-                        <input id="t_health" type="range" min="1" max="10" value="8" class="w-full accent-teal-600 mb-4">
-                        <textarea id="t_about" placeholder="Was brauchst du für ein gesundes Arbeitsumfeld?" class="w-full p-3 bg-slate-50 rounded-xl mb-6 border border-slate-200 h-24"></textarea>
-                        
-                        <button onclick="window.saveTalent()" class="w-full bg-teal-600 text-white font-bold py-3 rounded-xl hover:bg-teal-700">Profil aktivieren</button>
+                    <div class="bg-white p-8 rounded-xl shadow max-w-md mx-auto">
+                        <h2 class="text-xl font-bold mb-4">Talent-Profil</h2>
+                        <input id="t_title" type="text" placeholder="Beruf (z.B. Coach)" class="w-full p-3 bg-slate-50 rounded border mb-4">
+                        <label class="block text-sm font-bold mb-1">Mental Health Priorität (1-10)</label>
+                        <input id="t_health" type="range" min="1" max="10" value="8" class="w-full mb-4 accent-teal-600">
+                        <textarea id="t_about" placeholder="Bedürfnisse an den Arbeitgeber..." class="w-full p-3 bg-slate-50 rounded border mb-6 h-24"></textarea>
+                        <button onclick="window.saveTalent()" class="w-full bg-teal-600 text-white p-3 rounded font-bold">Speichern</button>
                     </div>
                 `;
             }
-            else if (state.view === 'company_onboarding') {
+            else if (state.view === 'company') {
                 html += `
-                    <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 max-w-xl mx-auto">
-                        <button onclick="window.setView('role_select')" class="text-slate-400 text-sm mb-6">← Zurück</button>
-                        <h2 class="text-2xl font-bold mb-2">Unternehmens-Profil</h2>
-                        <p class="text-slate-500 mb-6">Zeigt Talenten, wie wichtig euch Gesundheit ist.</p>
-                        
-                        <input id="c_name" type="text" placeholder="Unternehmensname" class="w-full p-3 bg-slate-50 rounded-xl mb-4 border border-slate-200">
-                        <label class="block text-sm font-semibold mb-1">Euer Culture Score (1-10)</label>
-                        <input id="c_culture" type="range" min="1" max="10" value="7" class="w-full accent-indigo-600 mb-4">
-                        <textarea id="c_perks" placeholder="Was tut ihr für die Gesundheit des Teams? (z.B. 4-Tage-Woche)" class="w-full p-3 bg-slate-50 rounded-xl mb-6 border border-slate-200 h-24"></textarea>
-                        
-                        <button onclick="window.saveCompany()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700">Als Unternehmen registrieren</button>
+                    <div class="bg-white p-8 rounded-xl shadow max-w-md mx-auto">
+                        <h2 class="text-xl font-bold mb-4">Firmen-Profil</h2>
+                        <input id="c_name" type="text" placeholder="Firmenname" class="w-full p-3 bg-slate-50 rounded border mb-4">
+                        <label class="block text-sm font-bold mb-1">Culture Score (1-10)</label>
+                        <input id="c_culture" type="range" min="1" max="10" value="7" class="w-full mb-6 accent-teal-600">
+                        <button onclick="window.saveCompany()" class="w-full bg-teal-600 text-white p-3 rounded font-bold">Speichern</button>
                     </div>
                 `;
             }
             else if (state.view === 'dashboard' && state.role === 'talent') {
                 const myApps = state.applications.filter(a => a.talentId === state.user.uid);
-                html += `
-                    <h2 class="text-2xl font-bold mb-6">Eingehende Bewerbungen von Firmen</h2>
-                    <div class="space-y-4">
-                `;
-                if(myApps.length === 0) html += `<div class="p-8 bg-white rounded-3xl text-center text-slate-500">Noch keine Anfragen. Firmen bewerben sich bei dir, sobald es ein Culture-Match gibt.</div>`;
-                
+                html += `<h2 class="text-2xl font-bold mb-4">Anfragen von Firmen</h2><div class="space-y-4">`;
+                if(myApps.length === 0) html += `<p>Noch keine Anfragen. Firmen melden sich hier bei dir.</p>`;
                 myApps.forEach(app => {
-                    html += `
-                        <div class="bg-white p-6 rounded-3xl border border-slate-200">
-                            <h3 class="font-bold text-lg">${app.companyName} möchte dich kennenlernen!</h3>
-                            <p class="text-slate-600 bg-slate-50 p-3 rounded-xl my-3 italic">"${app.message}"</p>
-                            ${app.status === 'pending' ? `
-                                <div class="flex gap-2">
-                                    <button onclick="window.updateAppStatus('${app.id}', 'accepted')" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm">Kontakt freigeben</button>
-                                    <button onclick="window.updateAppStatus('${app.id}', 'rejected')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm">Absagen</button>
-                                </div>
-                            ` : `<span class="bg-slate-100 px-3 py-1 rounded-full text-sm">${app.status}</span>`}
-                        </div>
-                    `;
+                    html += `<div class="bg-white p-6 rounded-xl shadow border border-teal-100">
+                        <h3 class="font-bold text-lg">${app.companyName}</h3><p class="italic bg-slate-50 p-2 mt-2">"${app.message}"</p>
+                    </div>`;
                 });
                 html += `</div>`;
             }
             else if (state.view === 'dashboard' && state.role === 'company') {
-                html += `
-                    <div class="mb-6 bg-indigo-50 p-4 rounded-xl">
-                        <h2 class="text-lg font-bold text-indigo-900">Talente finden</h2>
-                        <p class="text-sm text-indigo-700">Dein Score: ${state.profile.culture}/10. Bewirb dich bei passenden Talenten.</p>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                `;
-                
+                html += `<h2 class="text-2xl font-bold mb-4">Talente im Netzwerk</h2><div class="grid md:grid-cols-2 gap-4">`;
                 state.talents.forEach(t => {
-                    const match = 100 - Math.abs(t.health - state.profile.culture) * 10;
-                    html += `
-                        <div class="bg-white p-6 rounded-3xl border border-slate-200 flex flex-col justify-between">
-                            <div>
-                                <div class="flex justify-between mb-2">
-                                    <span class="text-xs font-bold bg-slate-100 px-2 py-1 rounded">Anonymes Talent</span>
-                                    <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded">${match}% Health Match</span>
-                                </div>
-                                <h3 class="font-bold text-lg">${t.title}</h3>
-                                <p class="text-sm text-slate-500 mb-3">${t.experience} Jahre Erfahrung | ${t.salary}€</p>
-                                <p class="text-sm text-slate-700 italic mb-4">"${t.about}"</p>
-                            </div>
-                            <button onclick="window.applyToTalent('${t.uid}')" class="bg-indigo-600 text-white w-full py-2 rounded-xl text-sm font-bold hover:bg-indigo-700">Beim Talent bewerben</button>
-                        </div>
-                    `;
+                    html += `<div class="bg-white p-6 rounded-xl shadow">
+                        <h3 class="font-bold">${t.title}</h3>
+                        <p class="text-sm mt-2 mb-4">Mental Health Bedarf: ${t.health}/10<br><i>"${t.about}"</i></p>
+                        <button onclick="window.applyToTalent('${t.uid}')" class="bg-teal-100 text-teal-800 w-full p-2 rounded font-bold">Anfragen</button>
+                    </div>`;
                 });
                 html += `</div>`;
             }
@@ -336,10 +211,8 @@
             html += `</div>`;
             appDiv.innerHTML = html;
         }
-
     </script>
 </body>
 </html>
-
 
 
