@@ -1,3 +1,3 @@
 export const PLOT_CONFIG = {
-    GEMINI_API_KEY: "AIzaSyDMhFb1bWLG6Imfh-U63wniIcgEdRseDIE"
+    GEMINI_API_KEY: "AIzaSyAs5e6DvKehxVP0OlPlFYsCiM4Tuzk1stk"
 };
