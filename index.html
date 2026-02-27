@@ -594,20 +594,21 @@ window.setSocialBattery = async (level) => {
             }
         };
         
-        window.onTearMove = (e) => {
+            window.onTearMove = (e) => {
             if(!startY || !dragEl) return;
             e.preventDefault(); 
             let y = e.touches ? e.touches[0].clientY : e.clientY;
             let diff = y - startY;
             
             if (isStub) {
-                if(diff > 0 && diff < 200) {
-                    dragEl.style.transform = `rotate(180deg) translateY(${-diff}px) rotateX(${diff/2}deg)`;
+                if(diff > 0) {
+                    dragEl.style.transform = `rotate(180deg) translateY(${-diff}px) rotateX(${Math.min(diff/2, 90)}deg)`;
                 }
             } else {
-                if(diff > 0 && diff < 400) {
-                    dragEl.style.transform = `translateY(${diff}px) rotate(${diff * 0.02}deg)`;
-                    dragEl.style.opacity = 1 - (diff / 500);
+                if(diff > 0) {
+                    // Limit entfernt: Folgt dem Finger jetzt unendlich und organisch
+                    dragEl.style.transform = `translateY(${diff}px) rotate(${diff * 0.03}deg)`;
+                    dragEl.style.opacity = Math.max(0.3, 1 - (diff / 800)); 
                 }
             }
         };
@@ -622,22 +623,31 @@ window.setSocialBattery = async (level) => {
             let diff = y - startY;
             startY = 0;
             
-            if(dragEl) dragEl.style.transition = 'transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease';
+            if(dragEl) dragEl.style.transition = 'transform 0.6s cubic-bezier(0.55, 0.085, 0.68, 0.53), opacity 0.5s ease';
 
             if (diff > 120) { 
                 if(!isStub) {
-                    localStorage.setItem(`torn_${state.user.uid}_${state.currentDrop.id}`, 'true');
-                    window.showToast("Ticket geöffnet.", "success");
-                    render();
+                    // NEU: Kinoreife Fall-Animation
+                    dragEl.style.transform = `translateY(${diff + 800}px) rotate(${diff * 0.1}deg) scale(0.8)`;
+                    dragEl.style.opacity = '0';
+                    
+                    // Warten, bis die Animation fertig ist, erst DANN rendern
+                    setTimeout(() => {
+                        localStorage.setItem(`torn_${state.user.uid}_${state.currentDrop.id}`, 'true');
+                        window.showToast("Ticket geöffnet.", "success");
+                        render();
+                    }, 500); 
                 } else {
                     window.activateTicket();
                 }
             } else if(dragEl) { 
+                // Sanftes Zurückfedern, wenn man zu früh loslässt
                 if (isStub) dragEl.style.transform = 'rotate(180deg)'; 
                 else { dragEl.style.transform = 'translateY(0) rotate(0deg)'; dragEl.style.opacity = 1; }
             }
             dragEl = null;
         };
+
 
         window.activateTicket = () => {
             const ticket = document.getElementById('main-ticket');
