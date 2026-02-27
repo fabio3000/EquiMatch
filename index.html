@@ -544,12 +544,19 @@ window.setSocialBattery = async (level) => {
 
         function scrollToBottom() { setTimeout(() => { const chatBox = document.getElementById('chat_messages'); if (chatBox) chatBox.scrollTop = chatBox.scrollHeight; }, 50); }
 
-        window.setView = (view) => { 
-            state.view = view; state.showSettings = false; state.showBreathe = false; 
-            if(view !== 'chats') state.openChatId = null;
-            if(view !== 'room' && view !== 'battery_check') state.socialBattery = null; 
-            checkRouting(); render(); 
-        };
+      window.setView = (view) => { 
+    state.view = view; state.showSettings = false; state.showBreathe = false; 
+    if(view !== 'chats') state.openChatId = null;
+    if(view !== 'room' && view !== 'battery_check') state.socialBattery = null; 
+    checkRouting(); 
+    render(); 
+    
+    // NEU: PayPal auslösen, wenn wir auf die Paywall wechseln (Standard: Unlimited)
+    if (view === 'paywall') {
+        window.initPayPal("49.00", "Director's Cut Premium", false);
+    }
+};
+
         
         window.toggleAuthMode = () => { 
             const emailEl = document.getElementById('auth_email');
@@ -931,26 +938,71 @@ window.setSocialBattery = async (level) => {
             } catch (e) { window.showToast("Failed to send.", "error"); }
         };
 
+
+window.initPayPal = (price, description, isBundle = false) => {
+    setTimeout(() => {
+        const container = document.getElementById('paypal-button-container');
+        if (!container) return;
+        
+        container.innerHTML = ''; // Vorher leeren
+        
+        if (window.paypal && window.paypal.Buttons) {
+            window.paypal.Buttons({
+                createOrder: (data, actions) => {
+                    return actions.order.create({
+                        purchase_units: [{
+                            description: description,
+                            amount: { currency_code: "EUR", value: price }
+                        }]
+                    });
+                },
+                onApprove: (data, actions) => {
+                    return actions.order.capture().then(async () => {
+                        if (isBundle) {
+                            // Füge hier deine Logik für +5 Tickets hinzu (Beispiel)
+                            // const currentTickets = state.profile?.ticketCount || 0;
+                            // await setDoc(doc(db, 'plot_users', state.user.uid), { ticketCount: currentTickets + 5 }, { merge: true });
+                            window.showToast("5 Tickets erfolgreich hinzugefügt!", "success");
+                            window.setView('home');
+                        } else {
+                            window.unlockPremium();
+                        }
+                    });
+                },
+                onError: (err) => {
+                    console.error("PayPal Error:", err);
+                    window.showToast("PayPal konnte nicht geladen werden.", "error");
+                }
+            }).render('#paypal-button-container');
+        } else {
+            container.innerHTML = `<button onclick="window.unlockPremium()" class="w-full bg-amber-600 py-4 rounded-xl font-bold uppercase text-xs shadow-lg">Upgrade jetzt aktivieren (Demo)</button>`;
+        }
+    }, 500); 
+};
+
         window.claimTicket = async () => {
     try {
-        // Logik: Falls kein Premium vorhanden und bereits ein Ticket existiert -> Paywall anzeigen
+        // Falls kein Premium und schon ein Ticket existiert -> Paywall
         if (!state.profile?.hasPremium && state.profile?.tickets && state.profile.tickets.length >= 1) {
             state.view = 'paywall'; 
-            render();
+            render(); // Erzeugt das HTML mit dem Container
             
-            // Kurze Verzögerung für das DOM-Rendering der Paywall
+            // Wichtig: Ein kleiner Delay, damit das DOM das Element "paypal-button-container" bereitstellt
             setTimeout(() => {
                 const container = document.getElementById('paypal-button-container');
-                if (!container) return;
+                if (!container) {
+                    console.error("PayPal Container nicht gefunden");
+                    return;
+                }
                 
-                container.innerHTML = ''; // Container leeren, um Doppel-Buttons zu vermeiden
+                container.innerHTML = ''; // Vorher leeren
                 
-                if (window.paypal) {
+                if (window.paypal && window.paypal.Buttons) {
                     window.paypal.Buttons({
                         createOrder: (data, actions) => {
                             return actions.order.create({
                                 purchase_units: [{
-                                    description: "Director's Cut Subscription",
+                                    description: "Director's Cut Premium",
                                     amount: { currency_code: "EUR", value: "49.00" }
                                 }]
                             });
@@ -961,39 +1013,38 @@ window.setSocialBattery = async (level) => {
                             });
                         },
                         onError: (err) => {
-                            window.showToast("PayPal-Zahlung fehlgeschlagen.", "error");
+                            console.error("PayPal Error:", err);
+                            window.showToast("PayPal konnte nicht geladen werden.", "error");
                         }
                     }).render('#paypal-button-container');
                 } else {
-                    // Fallback-Button mit dem Glow-Effekt aus dem zweiten Entwurf
-                    container.innerHTML = `
-                        <button onclick="window.unlockPremium()" 
-                                class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(217,119,6,0.4)] uppercase tracking-widest text-xs">
-                            Upgrade aktivieren (Demo)
-                        </button>`;
+                    // Fallback, falls Script-Blocker aktiv sind
+                    container.innerHTML = `<button onclick="window.unlockPremium()" class="w-full bg-amber-600 py-4 rounded-xl font-bold uppercase text-xs shadow-lg">Upgrade jetzt aktivieren (Demo)</button>`;
                 }
-            }, 100); // Schnellere Reaktion für besseres UI-Feeling
+            }, 500); // 500ms geben dem Browser genug Zeit zum Rendern
             
         } else {
-            // Normaler Buchungsprozess (Free oder Premium-User)
+            // Normaler Buchungsprozess
             const newTickets = [...(state.profile?.tickets || []), state.currentDrop.id];
-            
-            // Update in Firebase
             await setDoc(doc(db, 'plot_users', state.user.uid), { tickets: newTickets }, { merge: true });
             await updateDoc(doc(db, 'plot_drops', state.currentDrop.id), { 
                 spotsLeft: Math.max(0, (state.currentDrop.spotsLeft || 1) - 1) 
             });
-            
             state.hasTicket = true; 
             state.view = 'ticket'; 
             render();
             window.showToast("Ticket erfolgreich gesichert.", "success");
         }
     } catch (err) {
-        console.error("Claim Error:", err);
-        window.showToast("Fehler bei der Buchung: " + err.message, "error");
+        window.showToast("Fehler: " + err.message, "error");
     }
 };
+window.buyBundle = () => {
+    state.view = 'paywall'; 
+    render();
+    window.initPayPal("15.00", "5 Ticket Bundle", true); // Passe Preis nach Bedarf an
+};
+
 
 
         window.unlockPremium = async () => {
@@ -1037,7 +1088,8 @@ window.setSocialBattery = async (level) => {
                     appDiv.innerHTML = `<div class="text-center mt-40 flex flex-col items-center"><div class="w-16 h-16 border-t-2 border-l-2 border-amber-500 rounded-full animate-spin mb-6"></div><div class="text-2xl serif italic text-zinc-400">Loading your scene...</div></div>`;
                     return;
                 }
-                
+                <button onclick="window.buyBundle()" class="flex-1 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-[10px] text-zinc-400 font-bold uppercase">+5 Tickets</button>
+
                 const activeEl = document.activeElement;
                 const isChatInput = activeEl && activeEl.id === 'chat_input';
                 let chatInputValue = '';
