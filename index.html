@@ -216,7 +216,7 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
         let state = { 
             user: null, view: 'loading', profile: null, currentDrop: null, allDrops: [],
             hasTicket: false, messages: [], authMode: 'login', logoClicks: 0,
-            showSettings: false, showDirectorLogin: false, showBreathe: false, selectedCity: "Paderborn", aiLoading: false,
+            showSettings: false, showDirectorLogin: false, showBreathe: false, selectedCity: "Köln", aiLoading: false,
             editingDropId: null, openChatId: null, devTimeOffset: 0, socialBattery: null, tempEmail: ''
         };
 
@@ -275,57 +275,69 @@ window.generateShareCard = () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 1080;
-    canvas.height = 1920; // Instagram Story Format
+    canvas.height = 1920;
 
-    // 1. Hintergrund (Dunkler Gradient)
-    const grad = ctx.createRadialGradient(540, 0, 0, 540, 0, 1000);
-    grad.addColorStop(0, '#27272a');
-    grad.addColorStop(1, '#09090b');
-    ctx.fillStyle = grad;
+    // Aktuelle Zeit-Daten für das Branding
+    const now = new Date();
+    const currentYear = now.getFullYear(); // Zieht dynamisch 2026
+    const formattedDate = now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    // 1. Tiefschwarzer Hintergrund (OLED Ready)
+    ctx.fillStyle = '#09090b';
     ctx.fillRect(0, 0, 1080, 1920);
 
-    // 2. Film-Grain Textur (Simuliert)
-    ctx.globalAlpha = 0.05;
-    for (let i = 0; i < 10000; i++) {
+    // 2. High-Quality Film Grain (TikTok Grain Texture)
+    ctx.globalAlpha = 0.15;
+    for (let i = 0; i < 40000; i++) {
         ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000';
         ctx.fillRect(Math.random() * 1080, Math.random() * 1920, 2, 2);
     }
     ctx.globalAlpha = 1.0;
 
-    // 3. Branding "The Plot."
+    // 3. Subtiles Glühen hinter dem Namen
+    const aura = ctx.createRadialGradient(540, 960, 0, 540, 960, 600);
+    aura.addColorStop(0, 'rgba(251, 191, 36, 0.05)');
+    aura.addColorStop(1, 'transparent');
+    ctx.fillStyle = aura;
+    ctx.fillRect(0, 0, 1080, 1920);
+
+    // 4. Branding "The Plot."
     ctx.fillStyle = '#f4f4f5';
     ctx.font = 'italic 700 80px "Playfair Display", serif';
     ctx.textAlign = 'center';
     ctx.fillText('The Plot.', 540, 300);
 
-    // 4. Goldener Alias
-    const goldGrad = ctx.createLinearGradient(300, 0, 780, 0);
-    goldGrad.addColorStop(0, '#fbbf24');
-    goldGrad.addColorStop(1, '#d97706');
-    ctx.fillStyle = goldGrad;
+    // 5. Der Alias als Main Title (Serif Elegance)
+    ctx.fillStyle = '#ffffff';
     ctx.font = 'italic 700 110px "Playfair Display", serif';
     ctx.fillText(state.profile?.alias || 'The Stranger', 540, 960);
 
-    // 5. Subtext
+    // 6. Cineastische Credit-Line
     ctx.fillStyle = '#71717a';
-    ctx.font = '300 40px "Inter", sans-serif';
-    ctx.letterSpacing = "10px";
-    ctx.fillText('STORYLINE ENTRANCE', 540, 1050);
+    ctx.font = '400 35px "Inter", sans-serif';
+    ctx.letterSpacing = "15px";
+    ctx.fillText('ROLE ASSIGNED', 540, 1050);
 
-    // 6. Stadt & Info
-    ctx.fillStyle = '#f4f4f5';
-    ctx.letterSpacing = "2px";
-    ctx.font = '600 35px "Inter", sans-serif';
-    ctx.fillText(`${state.selectedCity.toUpperCase()} • 2026`, 540, 1700);
+    // 7. Footer - Dynamische Daten
+    ctx.fillStyle = '#3f3f46';
+    ctx.letterSpacing = "3px";
+    ctx.font = '700 28px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    
+    // Untere Credits im Movie-Stil
+    ctx.fillText(`PRODUCED IN ${state.selectedCity.toUpperCase()} • ${currentYear}`, 540, 1750);
+    ctx.font = '400 22px "Inter", sans-serif';
+    ctx.fillText(`SCENE DATE: ${formattedDate} • ENTRANCE GRANTED`, 540, 1810);
 
-    // Bild in neuem Tab öffnen oder als Download
+    // Download-Trigger
     const dataUrl = canvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = `ThePlot_${state.profile?.alias}.png`;
+    link.download = `ThePlot_${state.profile?.alias}_${currentYear}.png`;
     link.href = dataUrl;
     link.click();
-    window.showToast("Dein Role-Image wurde generiert!", "success");
+    window.showToast("Cineastische Card generiert.", "success");
 };
+
 
         window.setApiKey = () => {
             const currentKey = localStorage.getItem('plot_gemini_key') || "";
@@ -747,7 +759,7 @@ window.setSocialBattery = async (level) => {
     const btn = document.getElementById('auth_submit_btn');
     const email = document.getElementById('auth_email').value; 
     const pass = document.getElementById('auth_pass').value;
-    let city = "Paderborn";
+    let city = "Köln";
     
     if (state.authMode === 'register') {
         city = document.getElementById('reg_city').value;
