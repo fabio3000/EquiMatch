@@ -982,18 +982,25 @@ window.initPayPal = (price, description, isBundle = false) => {
 
         window.claimTicket = async () => {
     try {
-        // Falls kein Premium und schon ein Ticket existiert -> Paywall
         if (!state.profile?.hasPremium && state.profile?.tickets && state.profile.tickets.length >= 1) {
-            state.view = 'paywall'; 
-            render(); // Erzeugt das HTML mit dem Container
-            
-            // Wichtig: Ein kleiner Delay, damit das DOM das Element "paypal-button-container" bereitstellt
-            setTimeout(() => {
-                const container = document.getElementById('paypal-button-container');
-                if (!container) {
-                    console.error("PayPal Container nicht gefunden");
-                    return;
-                }
+            window.setView('paywall'); // Ruft ab sofort PayPal automatisch auf
+        } else {
+            // Normaler Buchungsprozess
+            const newTickets = [...(state.profile?.tickets || []), state.currentDrop.id];
+            await setDoc(doc(db, 'plot_users', state.user.uid), { tickets: newTickets }, { merge: true });
+            await updateDoc(doc(db, 'plot_drops', state.currentDrop.id), { 
+                spotsLeft: Math.max(0, (state.currentDrop.spotsLeft || 1) - 1) 
+            });
+            state.hasTicket = true; 
+            state.view = 'ticket'; 
+            render();
+            window.showToast("Ticket erfolgreich gesichert.", "success");
+        }
+    } catch (err) {
+        window.showToast("Fehler: " + err.message, "error");
+    }
+};
+
                 
                 container.innerHTML = ''; // Vorher leeren
                 
@@ -1039,18 +1046,31 @@ window.initPayPal = (price, description, isBundle = false) => {
         window.showToast("Fehler: " + err.message, "error");
     }
 };
+
+
 window.buyBundle = () => {
+    state.showSettings = false; // <-- Das schließt das Menü!
     state.view = 'paywall'; 
     render();
-    window.initPayPal("15.00", "5 Ticket Bundle", true); // Passe Preis nach Bedarf an
+    window.initPayPal("15.00", "5 Ticket Bundle", true); 
 };
 
 
 
-        window.unlockPremium = async () => {
-            await setDoc(doc(db, 'plot_users', state.user.uid), { hasPremium: true }, { merge: true });
-            state.view = 'home'; render(); window.showToast("Director's Cut unlocked. Welcome.", "success");
-        };
+
+      window.unlockPremium = async () => {
+    // 1. UI sofort aktualisieren, damit nichts hängen bleibt
+    state.view = 'home'; 
+    render(); 
+    window.showToast("Director's Cut unlocked. Welcome.", "success");
+    
+    // 2. Datenbank-Update (mit Fehler-Abfang für die Demo)
+    try {
+        await setDoc(doc(db, 'plot_users', state.user.uid), { hasPremium: true }, { merge: true });
+    } catch (err) {
+        console.warn("Demo-Hinweis: Firebase Rules blockieren das Speichern von Premium.", err);
+    }
+};
 
         function formatTimeLeft(ms) {
             if(ms <= 0) return "Jetzt";
