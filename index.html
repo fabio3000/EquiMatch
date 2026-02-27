@@ -650,43 +650,48 @@ window.setSocialBattery = async (level) => {
         };
 
         // --- AUTH & PROFILE ---
-        window.handleAuth = async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('auth_submit_btn');
-            const email = document.getElementById('auth_email').value; 
-            const pass = document.getElementById('auth_pass').value;
-            let city = "Paderborn";
+        window.window.handleAuth = async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('auth_submit_btn');
+    const email = document.getElementById('auth_email').value; 
+    const pass = document.getElementById('auth_pass').value;
+    let city = "Paderborn";
+    
+    if (state.authMode === 'register') {
+        city = document.getElementById('reg_city').value;
+    }
+    if(btn) { btn.disabled = true; btn.innerText = "Processing..."; }
+
+    try {
+        if (state.authMode === 'login') {
+            state.view = 'loading'; render();
+            await signInWithEmailAndPassword(auth, email, pass);
+            window.showToast("Welcome back.", "success");
+        } else {
+            isRegistering = true;
+            if(btn) btn.innerText = "Casting Role...";
+
+            state.view = 'loading'; render();
             
-            if (state.authMode === 'register') {
-                city = document.getElementById('reg_city').value;
-            }
-            if(btn) { btn.disabled = true; btn.innerText = "Processing..."; }
+            // 1. ZUERST Account erstellen (jetzt sind wir offiziell eingeloggt)
+            const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+            
+            // 2. DANACH den Alias generieren (jetzt erlaubt Firebase das Lesen der Namen)
+            let generatedAlias = await generateUniqueAlias();
+            
+            state.selectedCity = city;
+            state.profile = { hasPremium: false, tickets: [], completedDrops: [], alias: generatedAlias, isAdmin: false, city: city };
+            await setDoc(doc(db, 'plot_users', userCred.user.uid), state.profile);
+            
+            window.showToast(`Szene betreten als ${generatedAlias}`, "success");
+            isRegistering = false;
+        }
+    } catch (err) { 
+        window.showToast(err.message, "error"); 
+        state.view = 'auth'; isRegistering = false; render();
+    }
+};
 
-            try {
-                if (state.authMode === 'login') {
-                    state.view = 'loading'; render();
-                    await signInWithEmailAndPassword(auth, email, pass);
-                    window.showToast("Welcome back.", "success");
-                } else {
-                    isRegistering = true;
-                    if(btn) btn.innerText = "Casting Role...";
-                    let generatedAlias = await generateUniqueAlias();
-
-                    state.view = 'loading'; render();
-                    const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-                    
-                    state.selectedCity = city;
-                    state.profile = { hasPremium: false, tickets: [], completedDrops: [], alias: generatedAlias, isAdmin: false, city: city };
-                    await setDoc(doc(db, 'plot_users', userCred.user.uid), state.profile);
-                    
-                    window.showToast(`Szene betreten als ${generatedAlias}`, "success");
-                    isRegistering = false;
-                }
-            } catch (err) { 
-                window.showToast(err.message, "error"); 
-                state.view = 'auth'; isRegistering = false; render();
-            }
-        };
         
         window.handleLogout = () => { 
             state.showSettings = false; 
