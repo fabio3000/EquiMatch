@@ -209,7 +209,7 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
 };
 
         let appInit, auth, db;
-        const CITIES = ["Paderborn", "Köln", "Berlin", "Hamburg", "München"];
+        const CITIES = ["Köln", "Berlin", "Hamburg", "München"];
        const ADJECTIVES = [
     "Silent", "Midnight", "Ethereal", "Velvet", "Neon", "Cosmic", "Lucid", "Crimson", "Golden", 
     "Wandering", "Hidden", "Fading", "Distant", "Electric", "Astral", "Quiet", "Restless", "Bright",
@@ -1111,21 +1111,39 @@ window.setSocialBattery = async (level) => {
 
 
 
-      window.claimTicket = async () => {
+  window.claimTicket = async () => {
+    const usedThisMonth = state.profile.monthlyTicketsUsed || 0;
+    const extra = state.profile.extraTickets || 0;
+
+    // Check, ob noch Kontingent da ist
+    if (usedThisMonth >= 3 && extra <= 0) {
+        window.showToast("Monatslimit erreicht. Hol dir 5 Extra-Tickets!", "error");
+        window.setView('paywall'); // Neue View für den Kauf
+        return;
+    }
+
     try {
+        let update = {};
+        if (usedThisMonth < 3) {
+            update.monthlyTicketsUsed = usedThisMonth + 1;
+        } else {
+            update.extraTickets = extra - 1;
+        }
+
         const newTickets = [...(state.profile?.tickets || []), state.currentDrop.id];
-        await setDoc(doc(db, 'plot_users', state.user.uid), { tickets: newTickets }, { merge: true });
+        update.tickets = newTickets;
+
+        await setDoc(doc(db, 'plot_users', state.user.uid), update, { merge: true });
         await updateDoc(doc(db, 'plot_drops', state.currentDrop.id), { 
             spotsLeft: Math.max(0, (state.currentDrop.spotsLeft || 1) - 1) 
         });
-        state.hasTicket = true; 
+        
         state.view = 'ticket'; 
         render();
-        window.showToast("Ticket erfolgreich gesichert.", "success");
-    } catch (err) {
-        window.showToast("Fehler: " + err.message, "error");
-    }
+        window.showToast("Ticket gesichert.", "success");
+    } catch (err) { window.showToast("Fehler: " + err.message, "error"); }
 };
+
 
 
                 
@@ -1342,6 +1360,31 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
     `;
 }
 
+
+else if (state.view === 'paywall') {
+    html += `
+        <div class="text-center p-6 pt-20 animate-fade-in flex flex-col items-center">
+            <div class="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 border border-amber-500/30 shadow-[0_0_30px_rgba(217,119,6,0.2)]">
+                <svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5z"></path></svg>
+            </div>
+            <h2 class="text-4xl serif italic mb-4 gold-text">Casting Call.</h2>
+            <p class="text-zinc-400 text-sm mb-10 leading-relaxed max-w-xs mx-auto">Dein monatliches Kontingent von 3 Szenen ist erschöpft. Hol dir ein 5er-Bundle Extra-Tickets, um sofort wieder Teil der Cast zu werden.</p>
+            
+            <div class="bg-zinc-900/50 border border-amber-500/30 p-8 rounded-[40px] mb-8 w-full max-w-sm backdrop-blur-md">
+                <div class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold mb-2">Director's Bundle</div>
+                <div class="text-4xl font-black text-white mb-2">19,00 €</div>
+                <div class="text-[10px] text-amber-500/70 mb-8 font-mono tracking-widest">+5 TICKETS • KEIN VERFALL</div>
+                
+                <a href="https://paypal.me/deinname/19" target="_blank" onclick="window.showToast('Zahlung wird geprüft...', 'info')" 
+                   class="block w-full bg-zinc-100 text-zinc-900 font-black py-5 rounded-2xl uppercase tracking-widest text-xs hover:bg-white transition shadow-xl">
+                    Mit PayPal bezahlen
+                </a>
+            </div>
+            
+            <button onclick="window.setView('home')" class="text-zinc-600 hover:text-zinc-400 text-[10px] uppercase tracking-[0.2em] font-bold transition">Vielleicht ein andermal</button>
+        </div>
+    `;
+}
 
 
                 else if (state.view === 'chats') {
@@ -1746,7 +1789,18 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                 html += `</div>`;
 
                 if (state.showSettings) {
-                    html += `
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+    <div class="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+        <div class="text-[8px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Monats-Tickets</div>
+        <div class="text-lg font-bold text-zinc-200">${3 - (state.profile?.monthlyTicketsUsed || 0)}/3</div>
+    </div>
+    <div class="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+        <div class="text-[8px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Extra-Tickets</div>
+        <div class="text-lg font-bold text-amber-500">${state.profile?.extraTickets || 0}</div>
+    </div>
+</div>
+
+html += `
                         <div class="fixed inset-0 bg-zinc-950/90 z-[9999] p-6 flex flex-col justify-center animate-fade-in pointer-events-auto">
                             <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-sm w-full mx-auto shadow-2xl relative">
                                 <div class="flex justify-between items-center mb-6"><h2 class="text-2xl serif italic">Settings</h2><button onclick="window.toggleSettings()" class="text-zinc-500 hover:text-white transition">✕</button></div>
