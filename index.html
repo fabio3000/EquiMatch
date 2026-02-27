@@ -214,14 +214,29 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
     "Silent", "Midnight", "Ethereal", "Velvet", "Neon", "Cosmic", "Lucid", "Crimson", "Golden", 
     "Wandering", "Hidden", "Fading", "Distant", "Electric", "Astral", "Quiet", "Restless", "Bright",
     "Melancholic", "Serene", "Infinite", "Gloaming", "Radiant", "Obscure", "Vivid", "Hollow", 
-    "Urban", "Wild", "Solitary", "Fragile", "Brave", "Merciless", "Ancient", "Modern", "Lost"
+    "Urban", "Wild", "Solitary", "Fragile", "Brave", "Merciless", "Ancient", "Modern", "Lost",
+    "Mystic", "Savage", "Frozen", "Burning", "Lunar", "Solar", "Secret", "Broken", "Polished",
+    "Rough", "Gentle", "Haunted", "Blessed", "Cursed", "Heavy", "Weightless", "Indigo", "Amber",
+    "Silver", "Shadowy", "Illuminated", "Hidden", "Patient", "Swift", "Cunning", "Naive",
+    "Grim", "Joyful", "Bitter", "Sweet", "Floral", "Metallic", "Organic", "Digital", "Analog",
+    "Drifting", "Anchored", "Nomadic", "Static", "Vibrant", "Pale", "Deep", "Shallow", "Wide",
+    "Narrow", "Echoing", "Muted", "Thunderous", "Soft", "Sharp", "Blurry", "Clear", "Vague",
+    "Primal", "Sophisticated", "Rustic", "Industrial", "Nocturnal", "Diurnal", "Eternal", "Brief"
 ];
+
 const NOUNS = [
     "Observer", "Thinker", "Dreamer", "Poet", "Architect", "Stranger", "Wanderer", "Muse", 
     "Director", "Alchemist", "Nomad", "Oracle", "Traveler", "Illusionist", "Writer", "Artist",
     "Protagonist", "Shadow", "Ghost", "Visionary", "Legend", "Outsider", "Pilot", "Sailor", 
-    "Explorer", "Seeker", "Merchant", "Gardener", "Smith", "Herald", "Scholar"
+    "Explorer", "Seeker", "Merchant", "Gardener", "Smith", "Herald", "Scholar", "Engine",
+    "Compass", "Anchor", "Flame", "Wave", "Mountain", "Forest", "Desert", "Mirror", "Key",
+    "Gate", "Path", "Bridge", "Tower", "Cell", "Sanctuary", "Rebel", "Guardian", "Hunter",
+    "Prey", "King", "Queen", "Knight", "Pawn", "Bishop", "Rook", "Wolf", "Lion", "Raven",
+    "Eagle", "Owl", "Snake", "Dragon", "Phoenix", "Spirit", "Soul", "Body", "Mind", "Heart",
+    "Memory", "Future", "Past", "Present", "Moment", "Void", "Cloud", "Storm", "Breeze",
+    "Ocean", "River", "Stone", "Leaf", "Flower", "Seed", "Root", "Star", "Moon", "Sun"
 ];
+
 
         
         let state = { 
@@ -360,20 +375,14 @@ window.generateShareCard = () => {
         };
 
 
-async function generateUniqueAlias(realName = "") {
-    const firstChar = realName.trim().charAt(0).toUpperCase();
-    
-    // Filtert Adjektive nach dem Anfangsbuchstaben des Namens
-    const smartAdjectives = ADJECTIVES.filter(a => a.startsWith(firstChar));
-    const pool = smartAdjectives.length > 0 ? smartAdjectives : ADJECTIVES;
-
-    const adj = pool[Math.floor(Math.random() * pool.length)];
+async function generateUniqueAlias() {
+    // Wählt komplett zufällig aus den vollen Listen
+    const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
     const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
     
-    // Wir hängen eine kleine Zufallszahl an, um die Einzigartigkeit ohne DB-Check zu erhöhen
-    const randomSuffix = Math.floor(Math.random() * 99);
     return `The ${adj} ${noun}`; 
 }
+
 
 
 
