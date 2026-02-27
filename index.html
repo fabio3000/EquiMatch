@@ -777,20 +777,21 @@ window.setSocialBattery = async (level) => {
 
         // --- AUTH & PROFILE ---
                 // --- AUTH & PROFILE ---
+              // --- AUTH & PROFILE ---
         window.handleAuth = async (e) => {
             e.preventDefault();
             const btn = document.getElementById('auth_submit_btn');
             const email = document.getElementById('auth_email').value; 
             const pass = document.getElementById('auth_pass').value;
             let city = "Köln";
-            let finalAlias = "The Stranger"; // Standardwert vorbereiten
-            
+            let finalAlias = "The Stranger"; 
+
             if (state.authMode === 'register') {
                 city = document.getElementById('reg_city').value;
-                const realName = document.getElementById('reg_vibe').value;
-                
-                // Generiere den Alias basierend auf dem Namen
-                finalAlias = await generateUniqueAlias(realName);
+                const realNameInput = document.getElementById('reg_vibe').value;
+                if(btn) btn.innerText = "Casting Role...";
+                // Smart-Alias basierend auf dem Namen generieren
+                finalAlias = await generateUniqueAlias(realNameInput);
             }
 
             if(btn) { btn.disabled = true; btn.innerText = "Processing..."; }
@@ -802,14 +803,12 @@ window.setSocialBattery = async (level) => {
                     window.showToast("Welcome back.", "success");
                 } else {
                     isRegistering = true;
-                    if(btn) btn.innerText = "Casting Role...";
-
                     state.view = 'loading'; render();
                     
-                    // 1. Account erstellen
+                    // 1. Account bei Firebase Auth erstellen
                     const userCred = await createUserWithEmailAndPassword(auth, email, pass);
                     
-                    // 2. Profil speichern
+                    // 2. Profil-Dokument in Firestore erstellen
                     state.selectedCity = city;
                     state.profile = { 
                         hasPremium: false, 
@@ -819,6 +818,7 @@ window.setSocialBattery = async (level) => {
                         city: city, 
                         isAdmin: false 
                     };
+                    
                     await setDoc(doc(db, 'plot_users', userCred.user.uid), state.profile);
                     
                     window.showToast(`Szene betreten als ${finalAlias}`, "success");
@@ -829,6 +829,7 @@ window.setSocialBattery = async (level) => {
                 state.view = 'auth'; isRegistering = false; render();
             }
         };
+
 
         
         window.handleLogout = () => { 
