@@ -95,13 +95,13 @@
         } catch(e) { console.warn("config.js nicht gefunden."); }
 
         const firebaseConfig = {
-          apiKey: "AIzaSyDzN7StXcxZVkYcs3pQBh1rAYypqKF54PE",
-          authDomain: "equimatch-a9a03.firebaseapp.com",
-          projectId: "equimatch-a9a03",
-          storageBucket: "equimatch-a9a03.firebasestorage.app",
-          messagingSenderId: "1064864391538",
-          appId: "1:1064864391538:web:ceeca48c28a9e7a63f3deb"
-        };
+  apiKey: "AIzaSyDtwsvmYSONjFufhbJ5I8G_RAMffnh7re0",
+  authDomain: "theplot-app.firebaseapp.com",
+  projectId: "theplot-app",
+  storageBucket: "theplot-app.firebasestorage.app",
+  messagingSenderId: "550703275210",
+  appId: "1:550703275210:web:81bc0e5a373f87a3c92833"
+};
 
         let appInit, auth, db;
         const CITIES = ["Paderborn", "Köln", "Berlin", "Hamburg", "München"];
@@ -591,18 +591,6 @@
             }
         };
 
-        window.submitDirectorPassword = async (e) => {
-            e.preventDefault();
-            const pwd = document.getElementById('dir_pwd').value;
-            if(pwd === "director2026") {
-                await setDoc(doc(db, 'plot_users', state.user.uid), { isAdmin: true }, { merge: true });
-                window.showToast("Admin Access Granted.", "success");
-                state.showDirectorLogin = false;
-                render();
-            } else {
-                window.showToast("Access Denied.", "error");
-            }
-        };
 
         window.editDrop = (id) => {
             const drop = state.allDrops.find(d => d.id === id);
@@ -1383,5 +1371,4 @@
     </script>
 </body>
 </html>
-
 
