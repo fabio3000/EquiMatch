@@ -456,6 +456,21 @@ async function generateUniqueAlias() {
                         render();
                     });
                     unsubs.push(unsubDrops);
+                    
+                    
+                                        // 3. Pricing-Snapshot (NEU)
+                    const unsubPricing = onSnapshot(doc(db, 'system', 'pricing'), (docSnap) => {
+                        if (docSnap.exists()) {
+                            state.bundlePrice = docSnap.data().bundlePrice;
+                        } else {
+                            state.bundlePrice = '15.00';
+                            setDoc(doc(db, 'system', 'pricing'), { bundlePrice: '15.00' });
+                        }
+                        if (state.view === 'paywall') render();
+                    });
+                    unsubs.push(unsubPricing);
+
+
 
                 } else {
                     clearListeners();
@@ -1371,7 +1386,11 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
 }
 
 
-                                else if (state.view === 'paywall') {
+                                            else if (state.view === 'paywall') {
+                    // Sicherheits-Fallback, falls der Preis einen Moment zum Laden braucht
+                    const displayPrice = state.bundlePrice ? state.bundlePrice.replace('.', ',') : '19,00';
+                    const checkoutPrice = state.bundlePrice || '19.00';
+
                     html += `
                         <div class="text-center p-6 animate-fade-in flex flex-col items-center">
                             <div class="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-4 border border-amber-500/30 shadow-[0_0_30px_rgba(217,119,6,0.2)]">
@@ -1382,7 +1401,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                             
                             <div class="bg-zinc-900/50 border border-amber-500/30 p-6 rounded-[32px] mb-6 w-full max-w-sm backdrop-blur-md shadow-[0_0_20px_rgba(0,0,0,0.5)]">
                                 <div class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold mb-2">Director's Bundle</div>
-                                <div class="text-4xl font-black text-white mb-2">19,00 €</div>
+                                <div class="text-4xl font-black text-white mb-2">${displayPrice} €</div>
                                 <div class="text-[10px] text-amber-500/70 mb-6 font-mono tracking-widest">+5 EXTRA TICKETS</div>
                                 
                                 <div id="paypal-button-container" class="w-full min-h-[150px] relative z-50 flex items-center justify-center"></div>
@@ -1398,7 +1417,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                                 createOrder: function(data, actions) {
                                     return actions.order.create({
                                         purchase_units: [{
-                                            amount: { value: '19.00', currency_code: 'EUR' },
+                                            amount: { value: checkoutPrice, currency_code: 'EUR' },
                                             custom_id: state.user.uid 
                                         }]
                                     });
