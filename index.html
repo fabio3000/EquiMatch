@@ -1111,37 +1111,46 @@ window.setSocialBattery = async (level) => {
 
 
 
-  window.claimTicket = async () => {
+window.claimTicket = async () => {
+    // 1. Aktuelle Ticket-Stände aus dem Profil laden
     const usedThisMonth = state.profile.monthlyTicketsUsed || 0;
     const extra = state.profile.extraTickets || 0;
 
-    // Check, ob noch Kontingent da ist
+    // 2. Prüfung: Wenn Limit von 3 erreicht und keine Extras vorhanden sind -> Paywall
     if (usedThisMonth >= 3 && extra <= 0) {
-        window.showToast("Monatslimit erreicht. Hol dir 5 Extra-Tickets!", "error");
-        window.setView('paywall'); // Neue View für den Kauf
+        window.showToast("Monatslimit (3/3) erreicht. Hol dir Nachschub!", "error");
+        window.setView('paywall'); 
         return;
     }
 
     try {
-        let update = {};
+        let updateData = {};
+        
+        // Logik: Erst die 3 monatlichen Tickets nutzen, dann die Extra-Tickets
         if (usedThisMonth < 3) {
-            update.monthlyTicketsUsed = usedThisMonth + 1;
+            updateData.monthlyTicketsUsed = usedThisMonth + 1;
         } else {
-            update.extraTickets = extra - 1;
+            updateData.extraTickets = extra - 1;
         }
 
+        // Ticket ID zum Profil hinzufügen
         const newTickets = [...(state.profile?.tickets || []), state.currentDrop.id];
-        update.tickets = newTickets;
+        updateData.tickets = newTickets;
 
-        await setDoc(doc(db, 'plot_users', state.user.uid), update, { merge: true });
+        // In Firebase speichern
+        await setDoc(doc(db, 'plot_users', state.user.uid), updateData, { merge: true });
+        
+        // Spot im Drop abziehen
         await updateDoc(doc(db, 'plot_drops', state.currentDrop.id), { 
             spotsLeft: Math.max(0, (state.currentDrop.spotsLeft || 1) - 1) 
         });
         
         state.view = 'ticket'; 
         render();
-        window.showToast("Ticket gesichert.", "success");
-    } catch (err) { window.showToast("Fehler: " + err.message, "error"); }
+        window.showToast("Rolle gesichert.", "success");
+    } catch (err) { 
+        window.showToast("Systemfehler beim Buchen.", "error"); 
+    }
 };
 
 
@@ -1382,6 +1391,30 @@ else if (state.view === 'paywall') {
             </div>
             
             <button onclick="window.setView('home')" class="text-zinc-600 hover:text-zinc-400 text-[10px] uppercase tracking-[0.2em] font-bold transition">Vielleicht ein andermal</button>
+        </div>
+    `;
+}
+else if (state.view === 'paywall') {
+    html += `
+        <div class="text-center p-6 pt-20 animate-fade-in flex flex-col items-center">
+            <div class="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 border border-amber-500/30 shadow-[0_0_30px_rgba(217,119,6,0.2)]">
+                <svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5z"></path></svg>
+            </div>
+            <h2 class="text-4xl serif italic mb-4 gold-text">Casting Call.</h2>
+            <p class="text-zinc-400 text-sm mb-10 leading-relaxed max-w-xs mx-auto">Dein monatliches Kontingent von 3 Szenen ist erschöpft. Hol dir ein Bundle, um sofort weiterzuspielen.</p>
+            
+            <div class="bg-zinc-900/50 border border-amber-500/30 p-8 rounded-[40px] mb-8 w-full max-w-sm backdrop-blur-md">
+                <div class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold mb-2">Director's Bundle</div>
+                <div class="text-4xl font-black text-white mb-2">19,00 €</div>
+                <div class="text-[10px] text-amber-500/70 mb-8 font-mono tracking-widest">+5 EXTRA TICKETS</div>
+                
+                <a href="https://paypal.me/DEIN_PAYPAL_NAME/19" target="_blank" onclick="window.showToast('Zahlung wird geprüft...', 'info')" 
+                   class="block w-full bg-zinc-100 text-zinc-900 font-black py-5 rounded-2xl uppercase tracking-widest text-xs hover:bg-white transition shadow-xl">
+                    Via PayPal kaufen
+                </a>
+            </div>
+            
+            <button onclick="window.setView('home')" class="text-zinc-600 hover:text-zinc-400 text-[10px] uppercase tracking-[0.2em] font-bold transition">Später</button>
         </div>
     `;
 }
@@ -1788,22 +1821,26 @@ else if (state.view === 'paywall') {
 
                 html += `</div>`;
 
-                if (state.showSettings) {
-                    <div class="grid grid-cols-2 gap-2 mb-4">
-    <div class="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
-        <div class="text-[8px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Monats-Tickets</div>
-        <div class="text-lg font-bold text-zinc-200">${3 - (state.profile?.monthlyTicketsUsed || 0)}/3</div>
-    </div>
-    <div class="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
-        <div class="text-[8px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Extra-Tickets</div>
-        <div class="text-lg font-bold text-amber-500">${state.profile?.extraTickets || 0}</div>
-    </div>
-</div>
-
-html += `
+                                if (state.showSettings) {
+                    html += `
                         <div class="fixed inset-0 bg-zinc-950/90 z-[9999] p-6 flex flex-col justify-center animate-fade-in pointer-events-auto">
                             <div class="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-sm w-full mx-auto shadow-2xl relative">
-                                <div class="flex justify-between items-center mb-6"><h2 class="text-2xl serif italic">Settings</h2><button onclick="window.toggleSettings()" class="text-zinc-500 hover:text-white transition">✕</button></div>
+                                <div class="flex justify-between items-center mb-6">
+                                    <h2 class="text-2xl serif italic">Settings</h2>
+                                    <button onclick="window.toggleSettings()" class="text-zinc-500 hover:text-white transition">✕</button>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-2 mb-6">
+                                    <div class="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+                                        <div class="text-[8px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Monats-Tickets</div>
+                                        <div class="text-lg font-bold text-zinc-200">${3 - (state.profile?.monthlyTicketsUsed || 0)}/3</div>
+                                    </div>
+                                    <div class="bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+                                        <div class="text-[8px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Extra-Tickets</div>
+                                        <div class="text-lg font-bold text-amber-500">${state.profile?.extraTickets || 0}</div>
+                                    </div>
+                                </div>
+
                                 <div class="space-y-4">
                                     <div>
                                         <label class="text-xs uppercase tracking-widest text-zinc-500 font-bold block mb-2">Location</label>
@@ -1811,27 +1848,24 @@ html += `
                                             ${CITIES.map(c => `<option value="${c}" ${state.selectedCity === c ? 'selected' : ''}>${c}</option>`).join('')}
                                         </select>
                                     </div>
-                                    <div class="p-4 bg-amber-900/10 border border-amber-500/20 rounded-xl mt-4 flex justify-between items-center">
+                                    <div class="p-4 bg-amber-900/10 border border-amber-500/20 rounded-xl flex justify-between items-center">
                                         <div>
                                             <div class="text-[10px] uppercase tracking-widest text-amber-500 font-bold mb-1">Your Alias</div>
                                             <div class="font-serif italic text-lg text-zinc-200">${state.profile?.alias || 'The Stranger'}</div>
                                         </div>
                                         <button onclick="window.regenerateAlias()" class="text-xs bg-amber-900/50 text-amber-400 px-3 py-1.5 rounded hover:bg-amber-800/50 transition border border-amber-700/50">Reroll</button> 
-
                                     </div>
-                                    <button onclick="window.generateShareCard()" class="w-full mt-4 py-4 bg-amber-900/10 text-amber-500 rounded-2xl font-bold uppercase text-[10px] tracking-widest border border-amber-900/30 hover:bg-amber-900/20 transition flex items-center justify-center gap-2">
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-    Export Alias Card
-</button>
-
-                                </div>
-                                <div class="mt-8 space-y-2 border-t border-zinc-800 pt-6">
                                     
-</div>
+                                    <button onclick="window.generateShareCard()" class="w-full py-4 bg-amber-900/10 text-amber-500 rounded-2xl font-bold uppercase text-[10px] tracking-widest border border-amber-900/30 hover:bg-amber-900/20 transition flex items-center justify-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                        Export Alias Card
+                                    </button>
+                                </div>
 
-                                    <button onclick="window.resetPassword()" class="w-full text-left p-3 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition rounded-lg">Passwort zurücksetzen</button>
-                                    <button onclick="window.handleLogout()" class="w-full text-left p-3 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition rounded-lg">Ausloggen</button>
-                                    <button onclick="window.deleteAcc()" class="w-full text-left p-3 text-sm text-red-500 hover:bg-red-950/50 transition rounded-lg">Account löschen</button>
+                                <div class="mt-8 space-y-1 border-t border-zinc-800 pt-4">
+                                    <button onclick="window.resetPassword()" class="w-full text-left p-2 text-[10px] uppercase tracking-widest text-zinc-500 hover:text-zinc-100 transition">Passwort Reset</button>
+                                    <button onclick="window.handleLogout()" class="w-full text-left p-2 text-[10px] uppercase tracking-widest text-zinc-500 hover:text-zinc-100 transition">Ausloggen</button>
+                                    <button onclick="window.deleteAcc()" class="w-full text-left p-2 text-[10px] uppercase tracking-widest text-red-900 hover:text-red-500 transition">Account löschen</button>
                                 </div>
                             </div>
                         </div>
@@ -1840,6 +1874,7 @@ html += `
 
                 appDiv.innerHTML = html;
                 
+                // Cursor & Input Fokus erhalten
                 if (isChatInput) {
                     const restoredInput = document.getElementById('chat_input');
                     if (restoredInput) {
@@ -1848,19 +1883,11 @@ html += `
                         try { restoredInput.setSelectionRange(cursorStart, cursorEnd); } catch(e){}
                     }
                 }
-                
-                const skipBtn = document.getElementById('dev-skip-btn');
-                if (skipBtn) {
-                    if (state.profile?.isAdmin && state.currentDrop?.phase === 'live' && state.view === 'room') {
-                        skipBtn.classList.remove('hidden');
-                    } else {
-                        skipBtn.classList.add('hidden');
-                    }
-                }
             } catch (err) {
                 appDiv.innerHTML = `<div class="max-w-lg mx-auto mt-20 p-8 bg-red-900/30 border border-red-500 text-red-200 rounded-xl">Render Fehler: ${err.message}</div>`;
             }
         }
+
     </script>
 </body>
 </html>
