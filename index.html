@@ -562,6 +562,7 @@ window.setSocialBattery = async (level) => {
         let isStub = false;
         
     window.startTear = (e) => {
+    window.isTicketAnimating = true; // <-- Lock für render() aktivieren
     startY = e.touches ? e.touches[0].clientY : e.clientY;
     dragEl = document.getElementById('draggable-ticket');
     isStub = false;
@@ -572,14 +573,15 @@ window.setSocialBattery = async (level) => {
     }
     
     if(dragEl) {
-        dragEl.style.transition = 'none'; // Sofortiges Folgen ohne Verzögerung
+        dragEl.style.transition = 'none'; 
         document.addEventListener('mousemove', window.onTearMove, {passive: false});
         document.addEventListener('touchmove', window.onTearMove, {passive: false});
         document.addEventListener('mouseup', window.endTear);
         document.addEventListener('touchend', window.endTear);
-        document.addEventListener('touchcancel', window.endTear); // Fängt Browser-Abbrüche ab
+        document.addEventListener('touchcancel', window.endTear); 
     }
 };
+
 
         
             window.onTearMove = (e) => {
@@ -602,39 +604,49 @@ window.setSocialBattery = async (level) => {
         };
         
         window.endTear = (e) => {
-            document.removeEventListener('mousemove', window.onTearMove);
-            document.removeEventListener('touchmove', window.onTearMove);
-            document.removeEventListener('mouseup', window.endTear);
-            document.removeEventListener('touchend', window.endTear);
-            if(!startY) return;
-            let y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
-            let diff = y - startY;
-            startY = 0;
-            
-            if(dragEl) dragEl.style.transition = 'transform 0.6s cubic-bezier(0.55, 0.085, 0.68, 0.53), opacity 0.5s ease';
+    document.removeEventListener('mousemove', window.onTearMove);
+    document.removeEventListener('touchmove', window.onTearMove);
+    document.removeEventListener('mouseup', window.endTear);
+    document.removeEventListener('touchend', window.endTear);
+    document.removeEventListener('touchcancel', window.endTear); // <-- Auch hier sauber aufräumen
+    
+    if(!startY) return;
+    let y = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+    let diff = y - startY;
+    startY = 0;
+    
+    if(dragEl) dragEl.style.transition = 'transform 0.6s cubic-bezier(0.55, 0.085, 0.68, 0.53), opacity 0.5s ease';
 
-            if (diff > 80) { 
-                if(!isStub) {
-                    // NEU: Kinoreife Fall-Animation
-                    dragEl.style.transform = `translateY(${diff + 800}px) rotate(${diff * 0.1}deg) scale(0.8)`;
-                    dragEl.style.opacity = '0';
-                    
-                    // Warten, bis die Animation fertig ist, erst DANN rendern
-                    setTimeout(() => {
-                        localStorage.setItem(`torn_${state.user.uid}_${state.currentDrop.id}`, 'true');
-                        window.showToast("Ticket geöffnet.", "success");
-                        render();
-                    }, 500); 
-                } else {
-                    window.activateTicket();
-                }
-            } else if(dragEl) { 
-                // Sanftes Zurückfedern, wenn man zu früh loslässt
-                if (isStub) dragEl.style.transform = 'rotate(180deg)'; 
-                else { dragEl.style.transform = 'translateY(0) rotate(0deg)'; dragEl.style.opacity = 1; }
-            }
-            dragEl = null;
-        };
+    if (diff > 80) { 
+        if(!isStub) {
+            // Kinoreife Fall-Animation
+            dragEl.style.transform = `translateY(${diff + 800}px) rotate(${diff * 0.1}deg) scale(0.8)`;
+            dragEl.style.opacity = '0';
+            
+            // Warten, bis die Animation fertig ist, erst DANN rendern
+            setTimeout(() => {
+                window.isTicketAnimating = false; // <-- Lock aufheben
+                localStorage.setItem(`torn_${state.user.uid}_${state.currentDrop.id}`, 'true');
+                window.showToast("Ticket geöffnet.", "success");
+                render(true); // <-- WICHTIG: true erzwingt das Update zum Chat
+            }, 500); 
+        } else {
+            window.activateTicket();
+            setTimeout(() => { window.isTicketAnimating = false; }, 600);
+        }
+    } else if(dragEl) { 
+        // Sanftes Zurückfedern
+        if (isStub) dragEl.style.transform = 'rotate(180deg)'; 
+        else { dragEl.style.transform = 'translateY(0) rotate(0deg)'; dragEl.style.opacity = 1; }
+        
+        // Lock erst aufheben, wenn das Zurückfedern komplett fertig ist
+        setTimeout(() => { window.isTicketAnimating = false; }, 600); 
+    } else {
+        window.isTicketAnimating = false;
+    }
+    dragEl = null;
+};
+
 
 
         window.activateTicket = () => {
@@ -1023,11 +1035,14 @@ window.setSocialBattery = async (level) => {
         // --- UI RENDERER ---
         // Ändere die erste Zeile zu:
 function render(force = false) {
-    // NEU: Stoppt Hintergrund-Updates, solange die Tastatur offen ist
+    // NEU: Stoppt Hintergrund-Updates, solange das Ticket bewegt wird oder die Tastatur offen ist
     if (!force) {
+        if (window.isTicketAnimating) return; // <-- Schützt das Ticket!
+        
         const active = document.activeElement;
         if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
     }
+
 
     try {
         if (state.view === 'loading') {
