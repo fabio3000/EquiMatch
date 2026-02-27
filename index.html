@@ -2,52 +2,44 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>The Plot | Your life is a movie.</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.paypal.com/sdk/js?client-id=AdWPwOjuX1h1gYLtvpb63&currency=EUR"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        /* --- BASIS & VIEWPORT LOCK --- */
-body { 
+/* --- BASIS & SCROLL-LOGIK --- */
+html, body { 
+    margin: 0;
+    padding: 0;
     font-family: 'Inter', sans-serif; 
     background-color: #09090b; 
     color: #f4f4f5; 
     background-image: radial-gradient(circle at 50% 0%, #27272a 0%, #09090b 70%); 
-    height: 100vh;
+    min-height: 100vh;
     width: 100vw;
-    overflow: hidden; /* Verhindert globales Scrollen/Wackeln */
-    position: fixed;
-    touch-action: none; 
-    margin: 0;
+    
+    /* Erlaubt vertikales Scrollen, verhindert aber das Zoomen durch Gesten */
+    touch-action: pan-y; 
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden; /* Verhindert seitliches Wackeln */
+    overflow-y: auto;
 }
 
 h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
 
-/* --- DER SCROLL-CONTAINER (Löst dein Problem) --- */
-.main-content-container {
-    height: 100vh;
-    width: 100%;
-    overflow-y: auto; /* Erlaubt vertikales Scrollen NUR hier */
-    overflow-x: hidden;
-    touch-action: pan-y; /* Erlaubt Touch-Gesten zum Scrollen */
-    -webkit-overflow-scrolling: touch; /* Flüssiges Scrollen auf iOS */
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-    z-index: 1;
-    padding: 20px 0; /* Platz oben/unten */
-}
-
-/* --- EFFEKTE & TEXTUREN --- */
+/* --- VISUELLE EFFEKTE --- */
 .film-grain { 
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
     pointer-events: none; z-index: 50; opacity: 0.04; 
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E"); 
 }
 
-.gold-text { background: linear-gradient(to right, #fbbf24, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.gold-text { 
+    background: linear-gradient(to right, #fbbf24, #d97706); 
+    -webkit-background-clip: text; 
+    -webkit-text-fill-color: transparent; 
+}
 
 .paper-texture { position: relative; }
 .paper-texture::after { 
@@ -56,27 +48,47 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
     pointer-events: none; z-index: 10; mix-blend-mode: multiply; border-radius: inherit; 
 }
 
-/* --- TICKET DESIGN --- */
+/* --- TICKET-SYSTEM --- */
 .ticket-wrapper { 
-    display: flex; perspective: 1000px; position: relative; gap: 2px; 
-    user-select: none; -webkit-user-select: none; 
-    margin-bottom: 50px; /* Sicherer Abstand nach unten */
+    display: flex; 
+    perspective: 1000px; 
+    position: relative; 
+    gap: 2px; 
+    user-select: none; 
+    -webkit-user-select: none; 
+    margin: 20px auto;
+    max-width: 95%; /* Verhindert, dass das Ticket am Rand klebt */
 }
 
 .ticket-main { 
-    flex: 1; background: linear-gradient(135deg, #f4f4f5 0%, #e4e4e7 100%); 
-    border-radius: 16px 0 0 16px; padding: 32px; position: relative; 
-    box-shadow: -5px 10px 30px rgba(0,0,0,0.5); border-right: 3px dashed #9ca3af; 
-    transition: border-color 0.5s; overflow: hidden; 
+    flex: 1; 
+    background: linear-gradient(135deg, #f4f4f5 0%, #e4e4e7 100%); 
+    border-radius: 16px 0 0 16px; 
+    padding: 32px; 
+    position: relative; 
+    box-shadow: -5px 10px 30px rgba(0,0,0,0.5); 
+    border-right: 3px dashed #9ca3af; 
+    transition: border-color 0.5s; 
+    overflow: hidden; 
 }
 
 .ticket-stub { 
-    width: 90px; background: linear-gradient(135deg, #e4e4e7 0%, #d4d4d8 100%); 
-    border-radius: 0 16px 16px 0; display: flex; flex-direction: column; 
-    align-items: center; justify-content: center; position: relative; 
-    cursor: grab; box-shadow: 5px 10px 30px rgba(0,0,0,0.5); 
-    transform-origin: top left; transition: transform 0.1s ease-out; 
-    touch-action: none; overflow: hidden; 
+    width: 80px; 
+    background: linear-gradient(135deg, #e4e4e7 0%, #d4d4d8 100%); 
+    border-radius: 0 16px 16px 0; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    position: relative; 
+    cursor: grab; 
+    box-shadow: 5px 10px 30px rgba(0,0,0,0.5); 
+    transform-origin: top left; 
+    transition: transform 0.1s ease-out; 
+    
+    /* WICHTIG: Keine Browser-Gesten auf dem Stub, damit Dragging flüssig läuft */
+    touch-action: none; 
+    overflow: hidden; 
 }
 
 .ticket-stub:active { cursor: grabbing; }
@@ -88,56 +100,58 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
     z-index: 12; pointer-events: none; transition: border-width 0.2s ease; 
 }
 
-.ticket-stub:hover::before { border-width: 0 55px 55px 0; }
-
 .ticket-stub-text { 
-    writing-mode: vertical-rl; transform: rotate(180deg); color: #52525b; 
-    font-weight: 900; text-transform: uppercase; letter-spacing: 4px; 
-    font-size: 14px; pointer-events: none; position: relative; z-index: 11; 
+    writing-mode: vertical-rl; 
+    transform: rotate(180deg); 
+    color: #52525b; 
+    font-weight: 900; 
+    text-transform: uppercase; 
+    letter-spacing: 4px; 
+    font-size: 14px; 
+    pointer-events: none; 
+    position: relative; 
+    z-index: 11; 
 }
 
-/* --- ANIMATIONEN & ZUSTÄNDE --- */
+/* Zerreiß-Effekt */
 .ticket-wrapper.torn .ticket-stub { 
     transform: rotate(25deg) translateY(300px) translateX(50px) scale(0.9); 
-    opacity: 0; pointer-events: none; 
+    opacity: 0; 
+    pointer-events: none; 
     transition: transform 0.8s cubic-bezier(0.55, 0.085, 0.68, 0.53), opacity 0.6s ease; 
 }
-
 .ticket-wrapper.torn .ticket-main { border-right-color: transparent; }
 
+/* --- UI-ELEMENTE & TOASTS --- */
 .chat-scroll { 
-    max-height: 400px;
     overflow-y: auto !important; 
     touch-action: pan-y !important; 
     -webkit-overflow-scrolling: touch;
 }
-
 .chat-scroll::-webkit-scrollbar { width: 4px; }
 .chat-scroll::-webkit-scrollbar-thumb { background-color: #52525b; border-radius: 10px; }
 
 .blur-reveal { filter: blur(8px); user-select: none; transition: filter 1.5s ease; }
 
-/* --- TOASTS & OVERLAYS --- */
 #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
 .toast { 
     pointer-events: auto; background: rgba(24, 24, 27, 0.95); backdrop-filter: blur(8px); 
     border: 1px solid #3f3f46; color: white; padding: 16px 24px; border-radius: 12px; 
-    font-size: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
-    transform: translateX(120%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-    display: flex; align-items: center; gap: 12px; 
+    font-size: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); transform: translateX(120%); 
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; gap: 12px; 
 }
 .toast.show { transform: translateX(0); }
 .toast.error { border-left: 4px solid #ef4444; }
 .toast.success { border-left: 4px solid #10b981; }
-.toast.info { border-left: 4px solid #f59e0b; }
 
-@keyframes breathe { 0% { transform: scale(1); opacity: 0.5; } 40% { transform: scale(1.5); opacity: 0.1; } 70% { transform: scale(1.5); opacity: 0.1; } 100% { transform: scale(1); opacity: 0.5; } }
+/* Animationen */
+@keyframes breathe { 0% { transform: scale(1); opacity: 0.5; } 40% { transform: scale(1.5); opacity: 0.1; } 100% { transform: scale(1); opacity: 0.5; } }
 .animate-breathe { animation: breathe 8s infinite ease-in-out; }
 
 .torn-edge { 
     background-image: radial-gradient(circle at 5px 0, transparent 6px, #e4e4e7 7px); 
-    background-size: 16px 10px; background-repeat: repeat-x; height: 10px; 
-    width: 100%; position: absolute; top: -10px; left: 0; transform: rotate(180deg); 
+    background-size: 16px 10px; background-repeat: repeat-x; height: 10px; width: 100%; 
+    position: absolute; top: -10px; left: 0; transform: rotate(180deg); 
 }
 
     </style>
@@ -1463,3 +1477,4 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
     </script>
 </body>
 </html>
+
