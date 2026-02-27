@@ -895,21 +895,7 @@ window.setSocialBattery = async (level) => {
 };
 
                 
-                const data = await response.json();
-                if(data.error) throw new Error(data.error.message);
-                const result = JSON.parse(data.candidates[0].content.parts[0].text);
                 
-                document.getElementById('admin_title').value = result.title || ''; 
-                document.getElementById('admin_vibe').value = result.vibe || '';
-                document.getElementById('admin_blurloc').value = result.blurLocation || ''; 
-                document.getElementById('admin_exactloc').value = result.exactLocation || '';
-                document.getElementById('admin_prop').value = result.prop || ''; 
-                document.getElementById('admin_drink').value = result.secretDrink || '';
-                if(result.quests && result.quests.length > 0) document.getElementById('admin_quests').value = result.quests.join('\n');
-                window.showToast("Szene mit emotionalem Fokus generiert.", "success");
-            } catch(e) { window.showToast("KI Fehler: " + e.message, "error"); }
-            if(btn) { btn.innerText = "✨ KI Auto-Fill"; btn.disabled = false; }
-        };
 
         window.createDrop = async (e) => {
             e.preventDefault();
@@ -1093,7 +1079,7 @@ window.setSocialBattery = async (level) => {
                                         <div class="text-sm font-bold text-white">${d.title} <span class="text-zinc-500 text-xs font-normal">(${d.city})</span></div>
                                         <div class="text-xs text-zinc-400">${formatEventDate(d.eventTime)} | Phase: ${d.phase}</div>
                                     </div>
-                                    <<div class="flex gap-2">
+                                    <div class="flex gap-2">
     <button onclick="window.enterAdminLiveView('${d.id}')" class="px-2 py-1 bg-amber-900/50 text-amber-500 text-[10px] rounded border border-amber-700/50 hover:bg-amber-800/50 font-bold uppercase tracking-widest">👀 Live</button>
     <button onclick="window.toggleDropActive('${d.id}', ${d.isActive})" class="px-2 py-1 text-[10px] uppercase font-bold rounded ${d.isActive ? 'bg-amber-900 text-amber-500' : 'bg-zinc-800 text-zinc-400'}">${d.isActive ? 'Active' : 'Hidden'}</button>
     <button onclick="window.editDrop('${d.id}')" class="px-2 py-1 bg-zinc-800 text-zinc-300 text-[10px] rounded hover:bg-zinc-700">Edit</button>
