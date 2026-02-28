@@ -1075,7 +1075,7 @@ window.setSocialBattery = async (level) => {
   
                 
 
-        window.createDrop = async (e) => {
+                        window.createDrop = async (e) => {
             e.preventDefault();
             if(!state.profile?.isAdmin) return;
             const city = document.getElementById('admin_city').value;
@@ -1099,10 +1099,8 @@ window.setSocialBattery = async (level) => {
                 totalSpots: totalSpots,
                 prop: document.getElementById('admin_prop').value,
                 secretDrink: document.getElementById('admin_drink').value,
-                quests: document.getElementById('admin_quests').value.split('\n').filter(q => q.trim() !== '')
+                quests: document.getElementById('admin_quests').value.split('\n').filter(q => q.trim() !== ''),
                 isExclusive: document.getElementById('admin_exclusive') ? document.getElementById('admin_exclusive').checked : false 
-            };
-
             };
 
             if(state.editingDropId) {
@@ -1122,6 +1120,8 @@ window.setSocialBattery = async (level) => {
             }
             e.target.reset();
         };
+
+
 
         window.openPastChat = (dropId) => {
             state.openChatId = dropId;
@@ -1418,9 +1418,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                 </div>
                 
                 <div class="flex gap-4">
-                    <input id="admin_time" type="datetime-local" required value="${isoDate}" class="flex-1 p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-sm">
-                    <input id="admin_spots" type="number" value="4" class="w-20 p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-center text-sm font-bold">
-                </div>
+                    
 
                 <div class="flex gap-4">
                     <input id="admin_time" type="datetime-local" required value="${isoDate}" class="flex-1 p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-sm">
