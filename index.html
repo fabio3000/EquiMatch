@@ -189,6 +189,8 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
     <div class="fixed bottom-4 left-4 z-50 text-[10px] text-zinc-600 font-mono select-none pointer-events-none">
         0.9.12 Beta
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
    <script src="https://www.paypal.com/sdk/js?client-id=AboxAT2qskA0lY5-23Kj2tu_qY3bOK57rq_LbhtE_cdVOBT37fSHGacBKjgl-zx1XcJM9AZql96OCwc8&currency=EUR"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -1455,6 +1457,92 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                 }
 
 
+                else if (state.view === 'share') {
+                    const drop = state.currentDrop;
+                    if(!drop) { window.setView('home'); return; }
+
+                    const eventDate = new Date(drop.time || drop.eventTime);
+                    const timeStr = eventDate.toLocaleString('de-DE', { weekday: 'short', hour: '2-digit', minute:'2-digit' }) + " Uhr";
+
+                    html += `
+                        <div class="p-6 pt-12 animate-fade-in flex flex-col items-center min-h-screen pb-32">
+                            <div class="flex items-center justify-between w-full max-w-sm mb-8">
+                                <button onclick="window.setView('ticket')" class="text-zinc-600 hover:text-white transition">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                                </button>
+                                <h1 class="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-bold">Share your Plot</h1>
+                                <div class="w-6"></div>
+                            </div>
+
+                            <div id="share-card" class="w-full max-w-sm aspect-square bg-zinc-950 rounded-[40px] border border-amber-900/40 shadow-2xl p-8 flex flex-col justify-between relative overflow-hidden mb-10 pointer-events-none">
+                                <div class="absolute -top-20 -right-20 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl"></div>
+                                
+                                <div class="relative z-10">
+                                    <div class="flex items-center gap-3 mb-6">
+                                        <div class="w-10 h-10 bg-amber-500/10 rounded-full flex items-center justify-center border border-amber-500/20">
+                                            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+                                        </div>
+                                        <div>
+                                            <div class="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Solo Date in</div>
+                                            <div class="text-lg font-bold text-white">${drop.city}</div>
+                                        </div>
+                                    </div>
+
+                                    <h2 class="text-4xl serif italic gold-text mb-4 leading-tight">${drop.title}</h2>
+                                    
+                                    <div class="flex flex-wrap gap-4 text-zinc-400 text-[11px] uppercase tracking-widest font-bold">
+                                        <div class="flex items-center gap-2"><span class="text-amber-500/50">Vibe:</span> ${drop.vibe}</div>
+                                        <div class="flex items-center gap-2"><span class="text-amber-500/50">Time:</span> ${timeStr}</div>
+                                    </div>
+                                </div>
+
+                                <div class="relative z-10 flex items-end justify-between gap-4">
+                                    <div class="flex-1">
+                                        <div class="text-[9px] uppercase tracking-widest text-zinc-600 mb-2 font-bold">Role Details</div>
+                                        <div class="text-[11px] text-zinc-300 bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800 leading-relaxed italic">
+                                            Prop: ${drop.prop}<br>
+                                            Code: ${drop.secretDrink}
+                                        </div>
+                                    </div>
+                                    <div class="w-20 h-20 bg-white p-2 rounded-2xl shrink-0 shadow-lg" id="qrcode"></div>
+                                </div>
+                            </div>
+
+                            <button onclick="window.downloadShareCard(this)" class="w-full max-w-sm bg-amber-600 hover:bg-amber-500 text-white font-bold py-5 rounded-3xl transition shadow-xl flex items-center justify-center gap-3 uppercase tracking-widest text-xs">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Story-Card speichern
+                            </button>
+                        </div>
+                    `;
+
+                    setTimeout(() => {
+                        new QRCode(document.getElementById("qrcode"), {
+                            text: "https://fabio3000.github.io/ThePlot/", // Deine URL
+                            width: 80, height: 80,
+                            colorDark : "#000000", colorLight : "#ffffff"
+                        });
+
+                        window.downloadShareCard = async (btn) => {
+                            btn.innerText = "⏳ Rendering..."; btn.disabled = true;
+                            try {
+                                if(!window.html2canvas) {
+                                    await new Promise(r => {
+                                        const s = document.createElement('script');
+                                        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                                        s.onload = r; document.head.appendChild(s);
+                                    });
+                                }
+                                const canvas = await html2canvas(document.getElementById('share-card'), { scale: 3, backgroundColor: '#09090b' });
+                                const link = document.createElement('a');
+                                link.download = `ThePlot-${drop.city}.png`;
+                                link.href = canvas.toDataURL("image/png");
+                                link.click();
+                                window.showToast("Bild gespeichert!", "success");
+                            } catch (e) { window.showToast("Fehler beim Export.", "error"); }
+                            btn.innerText = "Story-Card speichern"; btn.disabled = false;
+                        };
+                    }, 100);
+                }
 
 
                 else if (state.view === 'chats') {
@@ -1656,7 +1744,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                             </div>
 
                             ${state.currentDrop.phase === 'lobby' ? `<button onclick="window.enterRoomFlow()" class="mt-8 mx-4 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest block w-[calc(100%-32px)] text-center shadow-lg">Lobby Chat öffnen</button>` : state.currentDrop.phase === 'live' ? `<button onclick="window.enterRoomFlow()" class="mt-8 mx-4 bg-amber-600 hover:bg-amber-500 text-white font-bold py-4 rounded-xl transition shadow-[0_0_20px_rgba(217,119,6,0.4)] text-sm uppercase tracking-widest animate-pulse block w-[calc(100%-32px)] text-center">ENTER LIVE SCENE</button>` : `<button onclick="window.enterRoomFlow()" class="mt-8 mx-4 bg-white text-black font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest block w-[calc(100%-32px)] text-center shadow-lg">View Credits (Connect)</button>`}
-                            <button onclick="window.shareScene()" class="w-full text-center mt-6 text-xs text-zinc-500 hover:text-amber-500 uppercase tracking-widest transition flex justify-center items-center gap-2 pb-10"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg> Share your Scene</button>
+                            <button "window.setView('share')" class="w-full text-center mt-6 text-xs text-zinc-500 hover:text-amber-500 uppercase tracking-widest transition flex justify-center items-center gap-2 pb-10"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg> Share your Scene</button>
                         `;
                     }
                 }
@@ -1928,4 +2016,3 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
     </script>
 </body>
 </html>
-
