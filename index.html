@@ -592,7 +592,7 @@ async function generateUniqueAlias() {
             if (state.view === 'chats' && !state.openChatId) needsVisualTick = true; 
 
             try {
-                if (state.currentDrop && state.currentDrop.phase === 'lobby' && state.currentDrop.eventTime && now >= state.currentDrop.eventTime) {
+                if (state.currentDrop?.phase === 'lobby' && state.currentDrop?.eventTime && now >= state.currentDrop.eventTime) {
                     isTransitioning = true;
                     await updateDoc(doc(db, 'plot_drops', state.currentDrop.id), { phase: 'live', activeQuestIndex: 0, questStartTime: now, readyVotes: [] });
                     isTransitioning = false;
@@ -2068,7 +2068,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                 else if (state.view === 'room') {
                     const now = Date.now() + state.devTimeOffset;
 
-                    if (state.currentDrop.phase === 'lobby') {
+                    if (state.currentDrop?.phase === 'lobby') {
                         if(state.showBreathe) {
                             html += `
                                 <div class="absolute inset-0 flex flex-col items-center justify-center bg-[#09090b] z-50 p-6 text-center pointer-events-auto">
