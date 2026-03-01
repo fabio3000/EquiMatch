@@ -1848,9 +1848,10 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                       <div class="text-center mb-10">
   <h1 class="text-4xl serif italic mb-3">Claim your storyline.</h1>
   
-<p id="rotating-claim" class="text-zinc-400 text-sm" style="transition: opacity 0.3s ease; min-height: 40px;">
+<p id="rotating-claim" class="text-zinc-400 text-sm" style="min-height: 40px;">
   Echte Begegnungen.<br>Mehr als Dating.<br>Ein Plot.
 </p>
+
 
 </div>
                         <form onsubmit="window.handleAuth(event)" class="space-y-4">
@@ -2313,22 +2314,47 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
         "Atmosphäre statt Algorithmus."
     ];
 
-    // Läuft als Endlosschleife im Hintergrund
+    let shuffledClaims = [];
+    let lastClaim = "";
+
+    // Zieht einen zufälligen Spruch aus dem "Beutel", ohne direkte Wiederholung
+    function getNextClaim() {
+        if (shuffledClaims.length === 0) {
+            shuffledClaims = [...claims].sort(() => Math.random() - 0.5);
+            if (shuffledClaims[0] === lastClaim) {
+                shuffledClaims.push(shuffledClaims.shift());
+            }
+        }
+        lastClaim = shuffledClaims.pop();
+        return lastClaim;
+    }
+
+    // Setzt den allerersten Text direkt beim Laden (ohne Warten)
+    let currentClaimText = getNextClaim();
+
     setInterval(() => {
         const el = document.getElementById("rotating-claim");
-        
-        // Wenn das Element nicht existiert (z.B. weil der User in einer Szene ist), passiert nichts
-        if (!el) return; 
+        if (!el) return;
 
-        el.style.opacity = 0;
+        // 1. Cineastischer Fade-Out: Ausblenden, unscharf werden und leicht absinken
+        el.style.transition = "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)";
+        el.style.opacity = "0";
+        el.style.filter = "blur(4px)";
+        el.style.transform = "translateY(5px)";
 
         setTimeout(() => {
-            const random = claims[Math.floor(Math.random() * claims.length)];
-            el.innerHTML = random;
-            el.style.opacity = 1;
-        }, 300); // Wartet, bis der Text ausgeblendet ist, tauscht ihn und blendet wieder ein
-    }, 4000); // Alle 4 Sekunden wechseln
+            // Text austauschen, während er unsichtbar ist
+            el.innerHTML = getNextClaim();
+            
+            // 2. Cineastischer Fade-In: Scharf werden, einblenden und in Position schweben
+            el.style.opacity = "1";
+            el.style.filter = "blur(0px)";
+            el.style.transform = "translateY(0px)";
+        }, 800); // Wartet exakt die 0.8s der Fade-Out Animation ab
+
+    }, 4500); // Alle 4,5 Sekunden wechseln
 </script>
+
 
 </body>
 </html>
