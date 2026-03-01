@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>The Plot | Your life is a movie.</title>
+        <link rel="icon" type="image/png" sizes="32x32" href="P.%20Logo.png?v=2">
+    <link rel="icon" type="image/png" sizes="16x16" href="P.%20Logo.png?v=2">
+
+    <link rel="apple-touch-icon" href="The%20Plot.%20Logo.png?v=2">
+    <meta name="apple-mobile-web-app-title" content="The Plot.">
+
+    <link rel="icon" type="image/png" sizes="192x192" href="The%20Plot.%20Logo.png?v=2">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
@@ -331,11 +339,27 @@ window.generateShareCard = async (cardType = 'alias') => {
     aura.addColorStop(1, 'transparent');
     ctx.fillStyle = aura; ctx.fillRect(0, 0, 1080, 1920);
 
-       // 2. Main Title (Gemeinsam)
+           // 2. Main Title (Gemeinsam) - Exaktes Logo-Matching
     ctx.fillStyle = '#f4f4f5';
-    ctx.font = 'italic 700 80px "Playfair Display", serif';
+    
+    // 900 erzwingt genau den gleichen massiven Faux-Bold-Effekt wie im HTML
+    ctx.font = 'italic 900 85px "Playfair Display", serif'; 
+    
+    // Wendet dein exaktes Tracking (-0.05em) an
+    if (ctx.letterSpacing !== undefined) {
+        ctx.letterSpacing = "-0.05em";
+    }
+    
     ctx.textAlign = 'center';
-    ctx.fillText('The Plot.', 540, 300);
+    
+    // Leerzeichen am Ende + kleine Verschiebung nach rechts (545), damit das 't' nicht abgeschnitten wird und alles perfekt zentriert bleibt
+    ctx.fillText('The Plot. ', 545, 300); 
+
+    // WICHTIG: Letter-Spacing sofort wieder zurücksetzen, damit der restliche Text auf dem Ticket (Alias, Ort etc.) normal lesbar bleibt!
+    if (ctx.letterSpacing !== undefined) {
+        ctx.letterSpacing = "0px";
+    }
+
 
     // --- NEU: DYNAMISCHE SCHRIFTGRÖSSE FÜR DEN ALIAS ---
     const userAlias = state.profile?.alias || 'The Stranger';
@@ -1444,7 +1468,8 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
 
                 let html = `
                     <nav class="p-6 flex justify-between items-center max-w-5xl mx-auto w-full z-20 pt-8">
-                        <div onclick="window.handleLogoClick()" class="text-2xl font-black tracking-tighter serif italic text-zinc-100 select-none cursor-pointer">The Plot.</div>
+                        <div onclick="window.handleLogoClick()" class="text-2xl font-black tracking-tighter serif italic text-zinc-100 select-none cursor-pointer pr-2" style="-webkit-font-smoothing: antialiased;">The Plot.</div>
+
                         <div class="text-xs uppercase tracking-widest text-zinc-500 font-semibold flex items-center gap-4">
                             ${state.profile?.isAdmin ? "<span class='text-red-500 border border-red-500 px-2 py-1 rounded'>Director</span>" : state.profile?.hasPremium ? "<span class='text-amber-500'>Director's Cut</span>" : ""}
                             ${state.user ? `<button onclick="window.toggleSettings()" class="hover:text-white transition pointer-events-auto bg-zinc-900 p-2 rounded-full border border-zinc-700"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg></button>` : ''}
