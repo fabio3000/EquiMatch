@@ -205,6 +205,42 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
     <div class="fixed bottom-4 left-4 z-50 text-[10px] text-zinc-600 font-mono select-none pointer-events-none">
         0.9.43 Beta
     </div>
+    
+    <script>
+const claims = [
+  "Echte Begegnungen.<br>Mehr als Dating.<br>Ein Plot.",
+  "Kein Swipe.<br>Nur Szene.",
+  "Du wurdest gecastet.<br>Was passiert, passiert.",
+  "Begegnung zuerst.<br>Alles andere entsteht.",
+  "Kuratiert statt zufällig.",
+  "Limitierte Rollen.<br>Echte Energie.",
+  "Vielleicht ein Date.<br>Vielleicht ein Kapitel.",
+  "Atmosphäre statt Algorithmus.",
+  "Connection first.<br>Chemistry optional.",
+  "Ein Abend.<br>Eine Rolle.<br>Offenes Ende."
+];
+
+const claimElement = document.getElementById("rotating-claim");
+
+function showRandomClaim() {
+  const random = claims[Math.floor(Math.random() * claims.length)];
+  
+  claimElement.style.opacity = 0;
+  claimElement.style.transform = "translateY(8px)";
+  
+  setTimeout(() => {
+    claimElement.innerHTML = random;
+    claimElement.style.opacity = 1;
+    claimElement.style.transform = "translateY(0)";
+  }, 300);
+}
+
+showRandomClaim();
+
+// Optional: automatisch alle 6 Sekunden wechseln
+setInterval(showRandomClaim, 6000);
+</script>
+
    <script src="https://www.paypal.com/sdk/js?client-id=AboxAT2qskA0lY5-23Kj2tu_qY3bOK57rq_LbhtE_cdVOBT37fSHGacBKjgl-zx1XcJM9AZql96OCwc8&currency=EUR"></script>
     <script type="module">
     
@@ -1820,7 +1856,13 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                 }
                 else if (state.view === 'auth') {
                     html += `
-                        <div class="text-center mb-10"><h1 class="text-4xl serif italic mb-3">Claim your storyline.</h1><p class="text-zinc-400 text-sm leading-relaxed">Solo-Dates ohne Dating-Angst.<br>Echte Begegnungen. Magisches Pacing.</p></div>
+                      <div class="text-center mb-10">
+  <h1 class="text-4xl serif italic mb-3">Claim your storyline.</h1>
+  
+  <p id="rotating-claim"
+     class="text-zinc-400 text-sm leading-relaxed transition-all duration-700 opacity-0 translate-y-2">
+  </p>
+</div>
                         <form onsubmit="window.handleAuth(event)" class="space-y-4">
                             <input id="auth_email" type="email" placeholder="Email" required value="${state.tempEmail || ''}" class="w-full p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl outline-none focus:border-amber-500/50 text-zinc-200 transition">
                             <div class="relative">
