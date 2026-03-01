@@ -571,7 +571,7 @@ async function generateUniqueAlias() {
                     }
                 }
                 else if (state.currentDrop && state.currentDrop.phase === 'intermission' && state.currentDrop.intermissionStartTime) {
-                    const breakDuration = 60 * 1000; 
+                    const breakDuration = 0 * 1000; 
                     if (now - state.currentDrop.intermissionStartTime >= breakDuration) {
                         isTransitioning = true; await window.advanceToNextQuest(); isTransitioning = false;
                     }
