@@ -357,16 +357,20 @@ window.generateShareCard = async (cardType = 'alias') => {
     let fileName = "";
     let shareText = "";
 
-    // 3. Unterscheidung: Ticket-Trophäe vs. Basis-Alias
+        // 3. Unterscheidung: Ticket-Trophäe vs. Basis-Alias
     if (cardType === 'ticket' && state.currentDrop) {
         // TICKET-MODUS (Mit echter Szene und Event-Datum!)
         const eventDate = new Date(state.currentDrop.eventTime);
         const formattedDate = eventDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        
+        // --- NEU: HIER FEHLTE DIE SZENEN-NUMMER ---
+        const sceneNum = state.currentDrop.sceneNumber || '001';
 
          // Findet das Ticket-Objekt im neuen Format { dropId, order }
-    const myTicket = state.profile?.tickets?.find(t => 
-        (typeof t === 'string' ? t === state.currentDrop.id : t.dropId === state.currentDrop.id)
-    );
+        const myTicket = state.profile?.tickets?.find(t => 
+            (typeof t === 'string' ? t === state.currentDrop.id : t.dropId === state.currentDrop.id)
+        );
+
     
     // Holt die Sequenznummer (order), falls vorhanden, sonst Fallback 001
     const ticketNum = (myTicket && typeof myTicket === 'object' && myTicket.order) 
