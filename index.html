@@ -1523,18 +1523,33 @@ function render(force = false) {
         if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
     }
 
-        if (state.user && !state.currentDrop && ['room', 'ticket', 'battery_check'].includes(state.view)) {
-            state.view = 'home';
-            checkRouting();
-        }
+    // FEHLER 1 BEHOBEN: Hier fehlte "state.allDrops.length > 0"
+    if (state.user && state.allDrops.length > 0 && !state.currentDrop && ['room', 'ticket', 'battery_check'].includes(state.view)) {
+        state.view = 'home';
+        checkRouting();
+    }
 
     try {
-        // --- NEU: Archiv-Logik ---
-const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-const activeDrops = state.allDrops.filter(d => d.eventTime > sevenDaysAgo);
-const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
+        const appDiv = document.getElementById('app'); 
+        
+        // FEHLER 2 BEHOBEN: Dieser Block hat gefehlt! Er beendet den Ladescreen.
+        if (state.view === 'loading' && state.profile) {
+            checkRouting(); 
+        }
+
+        // --- Archiv-Logik ---
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        const activeDrops = state.allDrops.filter(d => d.eventTime > sevenDaysAgo);
+        const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
 
         if (state.view === 'loading') {
+            appDiv.innerHTML = `
+                <div class="text-center mt-40 flex flex-col items-center">
+                    <div class="w-16 h-16 border-t-2 border-l-2 border-amber-500 rounded-full animate-spin mb-6"></div>
+                    <div class="text-2xl serif italic text-zinc-400">Loading your scene...</div>
+                </div>`;
+            return;
+        }
 
                     appDiv.innerHTML = `<div class="text-center mt-40 flex flex-col items-center"><div class="w-16 h-16 border-t-2 border-l-2 border-amber-500 rounded-full animate-spin mb-6"></div><div class="text-2xl serif italic text-zinc-400">Loading your scene...</div></div>`;
                     return;
