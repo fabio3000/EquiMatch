@@ -966,7 +966,7 @@ window.setSocialBattery = async (level) => {
             
             document.getElementById('admin_form_title').innerText = "Drop bearbeiten";
             if (document.getElementById('admin_exclusive')) document.getElementById('admin_exclusive').checked = drop.isExclusive || false;
-
+if (document.getElementById('admin_vibe_question')) document.getElementById('admin_vibe_question').value = drop.vibeQuestion || '';
 if (document.getElementById('admin_scene_number')) document.getElementById('admin_scene_number').value = drop.sceneNumber || '001';
 
             window.scrollTo(0,0);
@@ -983,6 +983,34 @@ if (document.getElementById('admin_scene_number')) document.getElementById('admi
                 }
             }
         };
+
+        window.openCastingFolder = (dropId) => { state.reviewDropId = dropId; render(); };
+        window.closeCastingFolder = () => { state.reviewDropId = null; render(); };
+
+        window.decideCasting = async (dropId, userId, isAccepted) => {
+            const drop = state.allDrops.find(d => d.id === dropId);
+            if(!drop) return;
+
+            try {
+                // Wir entfernen ihn in beiden Fällen von der Warteliste
+                const newRequestedBy = (drop.requestedBy || []).filter(id => id !== userId);
+                
+                if (isAccepted) {
+                    // Ticket vergeben (kostet kein Monats-Ticket, da es ein Premium-Invite ist)
+                    await updateDoc(doc(db, 'plot_users', userId), { tickets: arrayUnion(dropId) });
+                    await updateDoc(doc(db, 'plot_drops', dropId), { 
+                        requestedBy: newRequestedBy,
+                        spotsLeft: Math.max(0, (drop.spotsLeft || 1) - 1)
+                    });
+                    window.showToast("Rolle vergeben!", "success");
+                } else {
+                    // Einfach von der Liste streichen
+                    await updateDoc(doc(db, 'plot_drops', dropId), { requestedBy: newRequestedBy });
+                    window.showToast("Bewerber abgelehnt.", "info");
+                }
+            } catch(e) { window.showToast("Fehler: " + e.message, "error"); }
+        };
+
 
         window.toggleDropActive = async (id, currentStatus) => {
             await updateDoc(doc(db, 'plot_drops', id), { isActive: !currentStatus });
@@ -1081,11 +1109,12 @@ if (document.getElementById('admin_scene_number')) document.getElementById('admi
                             responseMimeType: "application/json",
                             responseSchema: {
                                 type: "OBJECT",
-                                properties: {
+                                                                properties: {
                                     title: {type: "STRING"}, vibe: {type: "STRING"}, blurLocation: {type: "STRING"}, exactLocation: {type: "STRING"}, prop: {type: "STRING"}, secretDrink: {type: "STRING"}, quests: {type: "ARRAY", items: {type: "STRING"}},
-                                    suggestedDateTime: {type: "STRING", description: "Format: YYYY-MM-DDTHH:mm"} // <-- KI liefert das neue Datum
+                                    suggestedDateTime: {type: "STRING", description: "Format: YYYY-MM-DDTHH:mm"},
+                                    vibeQuestion: {type: "STRING", description: "Eine tiefgründige, psychologische Frage zur Bewerbung um sich zu bewerben, passend zum Event (z.B. 'Welches Lied hörst du nachts allein?')"}
                                 },
-                                required: ["title", "vibe", "blurLocation", "exactLocation", "prop", "secretDrink", "quests", "suggestedDateTime"]
+                                required: ["title", "vibe", "blurLocation", "exactLocation", "prop", "secretDrink", "quests", "suggestedDateTime", "vibeQuestion"]
                             }
                         }
                     })
@@ -1140,6 +1169,7 @@ if (document.getElementById('admin_scene_number')) document.getElementById('admi
                 prop: document.getElementById('admin_prop').value,
                 secretDrink: document.getElementById('admin_drink').value,
                 quests: document.getElementById('admin_quests').value.split('\n').filter(q => q.trim() !== ''),
+                vibeQuestion: document.getElementById('admin_vibe_question') ? document.getElementById('admin_vibe_question').value : '',
                 isExclusive: document.getElementById('admin_exclusive') ? document.getElementById('admin_exclusive').checked : false 
             };
 
@@ -1190,7 +1220,7 @@ if (document.getElementById('admin_scene_number')) document.getElementById('admi
         window.openVibeCheck = () => { state.showVibeCheck = true; render(); };
         window.closeVibeCheck = () => { state.showVibeCheck = false; render(); };
 
-        window.submitCastingRequest = async () => {
+             window.submitCastingRequest = async () => {
             const answer = document.getElementById('vibe_answer').value;
             if(!answer || answer.trim().length < 5) return window.showToast("Zu kurz. Sei ehrlich.", "error");
             
@@ -1200,12 +1230,13 @@ if (document.getElementById('admin_scene_number')) document.getElementById('admi
             try {
                 await updateDoc(doc(db, 'plot_drops', state.currentDrop.id), {
                     requestedBy: arrayUnion(state.user.uid),
-                    [`applications.${state.user.uid}`]: answer // Speichert die geheime Antwort
+                    [`applications.${state.user.uid}`]: { alias: state.profile.alias, answer: answer }
                 });
                 window.showToast("Request gesendet. Die Tür ist zu. Warte auf Einlass.", "success");
                 render(true);
             } catch (err) { window.showToast("Systemfehler.", "error"); }
         };
+
 
         // --- FIGHT CLUB: STAY PRESENT SCHWUR ---
         let holdTimer;
@@ -1366,6 +1397,43 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                                 <input id="dir_pwd" type="password" placeholder="Passwort" class="w-full p-4 bg-zinc-900 border border-zinc-800 rounded-xl outline-none focus:border-red-500 text-zinc-200 transition text-center tracking-widest">
                                 <button type="submit" class="w-full bg-red-900/50 text-red-400 border border-red-800/50 hover:bg-red-800 hover:text-white font-bold py-4 rounded-xl transition uppercase tracking-widest">Enter</button>
                                 <button type="button" onclick="window.closeDirectorLogin()" class="text-xs text-zinc-500 uppercase tracking-widest mt-4">Abbrechen</button>
+                                
+                                        if (state.reviewDropId) {
+            const reviewDrop = state.allDrops.find(d => d.id === state.reviewDropId);
+            const requests = reviewDrop?.requestedBy || [];
+            
+            html += `
+                <div class="fixed inset-0 bg-zinc-950/95 z-[99999] p-6 flex flex-col items-center pt-20 overflow-y-auto pointer-events-auto">
+                    <div class="w-full max-w-xl">
+                        <div class="flex justify-between items-center mb-8">
+                            <div>
+                                <h2 class="text-3xl serif italic gold-text">Casting Mappe</h2>
+                                <p class="text-zinc-500 text-xs uppercase tracking-widest mt-1">${reviewDrop.title}</p>
+                            </div>
+                            <button onclick="window.closeCastingFolder()" class="text-zinc-500 hover:text-white uppercase text-xs font-bold tracking-widest">Schließen</button>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            ${requests.length === 0 ? '<p class="text-zinc-500 italic">Keine offenen Bewerbungen.</p>' : ''}
+                            ${requests.map(uid => {
+                                const app = reviewDrop.applications?.[uid] || { alias: 'Unknown', answer: 'Keine Antwort.' };
+                                return `
+                                <div class="bg-zinc-900 border border-zinc-800 p-6 rounded-3xl relative overflow-hidden">
+                                    <div class="text-[10px] uppercase tracking-widest text-amber-500 font-bold mb-1">${app.alias}</div>
+                                    <div class="text-zinc-200 text-sm italic leading-relaxed mb-6">"${app.answer}"</div>
+                                    <div class="flex gap-2">
+                                        <button onclick="window.decideCasting('${reviewDrop.id}', '${uid}', true)" class="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-widest transition">Accept</button>
+                                        <button onclick="window.decideCasting('${reviewDrop.id}', '${uid}', false)" class="flex-1 bg-zinc-950 text-red-500 hover:text-red-400 font-bold py-3 rounded-xl border border-zinc-800 text-xs uppercase tracking-widest transition">Reject</button>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+
                             </form>
                         </div>
                     `;
@@ -1402,6 +1470,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                 <div class="bg-zinc-900/40 backdrop-blur-md p-8 rounded-[32px] border ${d.isActive ? 'border-amber-900/50 shadow-[0_0_30px_rgba(217,119,6,0.1)]' : 'border-zinc-800'} transition-all">
                     <div class="text-center mb-6">
                         <div class="text-[10px] uppercase tracking-widest text-amber-600 font-bold mb-1">${d.isActive ? 'Live Drop' : 'Entwurf'}</div>
+                        ${d.isExclusive ? `<button onclick="window.openCastingFolder('${d.id}')" class="flex-1 py-3 bg-amber-900/40 text-amber-500 text-[10px] uppercase font-bold rounded-xl border border-amber-700/50">📂 Requests (${d.requestedBy?.length || 0})</button>` : ''}
                         <h3 class="text-2xl serif italic text-zinc-100">${d.title}</h3>
                         <div class="text-[10px] text-zinc-500 mt-1 uppercase tracking-tighter">${formatEventDate(d.eventTime)} in ${d.city}</div>
                     </div>
@@ -1486,7 +1555,16 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                     </div>
                     <input type="checkbox" id="admin_exclusive" class="w-6 h-6 accent-amber-500 cursor-pointer">
                 </div>
+                                <div class="p-4 bg-amber-900/10 border border-amber-500/30 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-widest text-amber-500 font-bold">Premium Casting</div>
+                        <div class="text-xs text-zinc-400 mt-1">Erfordert Bewerbung durch die Nutzer.</div>
+                    </div>
+                    <input type="checkbox" id="admin_exclusive" class="w-6 h-6 accent-amber-500 cursor-pointer">
+                </div>
                 
+                <input id="admin_vibe_question" placeholder="Die Vibe-Check Frage für Bewerber..." class="w-full p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-sm italic">
+
                 <div class="flex gap-4">
                     <input id="admin_time" type="datetime-local" required value="${isoDate}" class="flex-1 p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-sm">
                     <input id="admin_spots" type="number" value="4" class="w-20 p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-center text-sm font-bold">
@@ -1736,7 +1814,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                             <div class="w-full max-w-sm bg-zinc-900 border border-amber-900/50 p-8 rounded-[32px] shadow-[0_0_50px_rgba(217,119,6,0.15)] animate-fade-in">
                                 <h2 class="text-3xl serif italic gold-text mb-2 text-center">The Vibe Check.</h2>
                                 <p class="text-zinc-400 text-xs mb-8 text-center leading-relaxed">Der Director wählt den Cast sorgfältig. Beantworte diese Frage, um deine Tiefe zu beweisen:</p>
-                                <label class="text-[10px] uppercase tracking-widest text-amber-500 font-bold block mb-3">Welches Lied hörst du, wenn du nachts allein fährst?</label>
+                               <label class="text-[10px] uppercase tracking-widest text-amber-500 font-bold block mb-3 text-center leading-relaxed">"${state.currentDrop?.vibeQuestion || 'Warum bist du der richtige Cast für diese Szene?'}"</label>
                                 <textarea id="vibe_answer" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-zinc-200 focus:border-amber-500 outline-none h-32 mb-6 text-sm" placeholder="Sei ehrlich..."></textarea>
                                 <button onclick="window.submitCastingRequest()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-4 rounded-xl transition uppercase tracking-widest text-xs shadow-lg">Bewerbung einreichen</button>
                                 <button onclick="window.closeVibeCheck()" class="w-full text-zinc-600 hover:text-zinc-400 text-[10px] uppercase tracking-widest mt-4 transition font-bold">Zurück in den Schatten</button>
