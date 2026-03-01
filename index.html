@@ -525,31 +525,51 @@ async function generateUniqueAlias() {
                         });
                         unsubs.push(unsubProfile);
 
-                        const unsubDrops = onSnapshot(collection(db, 'plot_drops'), (snap) => {
+                                                const unsubDrops = onSnapshot(collection(db, 'plot_drops'), (snap) => {
                             const allDrops = snap.docs.map(d => ({id: d.id, ...d.data()}));
                             state.allDrops = allDrops;
                             const completed = state.profile?.completedDrops || [];
                             
                             state.currentDrop = allDrops.find(d => {
-                                if (!d.isActive || d.city !== state.selectedCity || completed.includes(d.id)) return false;
-                                const hasTicket = state.profile?.tickets?.includes(d.id);
-                                if ((d.phase === 'credits' || d.phase === 'finale') && !hasTicket) return false;
-                                return true;
+                                // 1. Stadt muss immer passen
+                                if (d.city !== state.selectedCity) return false;
+                                
+                                // 2. Prüfen, ob wir ein Ticket haben (Objekt-Format berücksichtigen)
+                                const hasTicket = state.profile?.tickets?.some(t => 
+                                    typeof t === 'string' ? t === d.id : t.dropId === d.id
+                                );
+
+                                // 3. Wenn wir ein Ticket haben, ist das unser Drop (bis er "completed" ist)
+                                if (hasTicket) {
+                                    return !completed.includes(d.id);
+                                }
+
+                                // 4. Wenn kein Ticket: Nur aktive Drops in der Lobby-Phase anzeigen
+                                return d.isActive && d.phase === 'lobby' && !completed.includes(d.id);
                             }) || null;
                             
                             if(state.currentDrop) {
-                                state.hasTicket = state.profile?.tickets?.includes(state.currentDrop.id) || false;
+                                // state.hasTicket ebenfalls mit dem neuen Format prüfen
+                                state.hasTicket = state.profile?.tickets?.some(t => 
+                                    typeof t === 'string' ? t === state.currentDrop.id : t.dropId === state.currentDrop.id
+                                ) || false;
+
                                 if (window.unsubChat) window.unsubChat();
                                 window.unsubChat = onSnapshot(collection(db, `plot_messages_${state.currentDrop.id}`), (msgSnap) => {
                                     state.messages = msgSnap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
                                     if(state.view === 'room') { render(); scrollToBottom(); }
                                 });
                                 if(!countdownInterval) countdownInterval = setInterval(automatedPacingLogic, 1000);
+                            } else {
+                                // Wenn kein Drop mehr da ist, Chat-Listener stoppen
+                                if (window.unsubChat) { window.unsubChat(); window.unsubChat = null; }
                             }
+                            
                             checkRouting();
                             render();
                         });
                         unsubs.push(unsubDrops);
+
 
                         const unsubPricing = onSnapshot(doc(db, 'system', 'pricing'), (docSnap) => {
                             if (docSnap.exists()) {
@@ -1459,7 +1479,7 @@ window.claimTicket = async () => {
         // --- UI RENDERER ---
         // Ändere die erste Zeile zu:
 function render(force = false) {
-    // NEU: Stoppt Hintergrund-Updates, solange das Ticket bewegt wird oder die Tastatur offen ist
+
     if (!force) {
         if (window.isTicketAnimating) return; // <-- Schützt das Ticket!
         
@@ -1467,6 +1487,10 @@ function render(force = false) {
         if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
     }
 
+        if (state.user && !state.currentDrop && ['room', 'ticket', 'battery_check'].includes(state.view)) {
+            state.view = 'home';
+            checkRouting();
+        }
 
     try {
         // --- NEU: Archiv-Logik ---
