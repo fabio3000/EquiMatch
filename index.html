@@ -307,18 +307,14 @@ window.sendBroadcast = async () => {
     } catch (e) { console.error(e); }
 };
 
-window.generateShareCard = async () => {
+window.generateShareCard = async (cardType = 'alias') => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     canvas.width = 1080; canvas.height = 1920;
 
     const now = new Date();
     const currentYear = now.getFullYear();
-    const formattedDate = state.currentDrop ? new Date(state.currentDrop.eventTime).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : now.toLocaleDateString('de-DE');
     
-    const ticketNum = state.user ? String((state.user.uid.charCodeAt(0) % 12) + 1).padStart(3, '0') : '001';
-    const sceneNum = state.currentDrop?.sceneNumber || '001';
-
     // 1. Hintergrund & Texturen
     ctx.fillStyle = '#09090b'; ctx.fillRect(0, 0, 1080, 1920);
 
@@ -334,7 +330,7 @@ window.generateShareCard = async () => {
     aura.addColorStop(1, 'transparent');
     ctx.fillStyle = aura; ctx.fillRect(0, 0, 1080, 1920);
 
-    // 2. Texte rendern
+    // 2. Main Title (Gemeinsam)
     ctx.fillStyle = '#f4f4f5';
     ctx.font = 'italic 700 80px "Playfair Display", serif';
     ctx.textAlign = 'center';
@@ -344,60 +340,75 @@ window.generateShareCard = async () => {
     ctx.font = 'italic 700 110px "Playfair Display", serif';
     ctx.fillText(state.profile?.alias || 'The Stranger', 540, 960);
 
-    ctx.fillStyle = '#d97706'; 
-    ctx.font = '700 35px "Inter", sans-serif';
-    ctx.letterSpacing = "15px";
-    ctx.fillText(`SCENE ${sceneNum} • TICKET ${ticketNum}`, 540, 1050);
+    let fileName = "";
+    let shareText = "";
 
-    ctx.fillStyle = '#3f3f46';
-    ctx.letterSpacing = "3px";
-    ctx.font = '700 28px "Inter", sans-serif';
-    ctx.textAlign = 'center';
-    
-    ctx.fillText(`PRODUCED IN ${(state.currentDrop?.city || state.selectedCity).toUpperCase()} • ${currentYear}`, 540, 1750);
-    ctx.font = '400 22px "Inter", sans-serif';
-    ctx.fillText(`SCENE DATE: ${formattedDate} • ENTRANCE GRANTED`, 540, 1810);
+    // 3. Unterscheidung: Ticket-Trophäe vs. Basis-Alias
+    if (cardType === 'ticket' && state.currentDrop) {
+        // TICKET-MODUS (Mit echter Szene und Event-Datum!)
+        const eventDate = new Date(state.currentDrop.eventTime);
+        const formattedDate = eventDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const ticketNum = state.user ? String((state.user.uid.charCodeAt(0) % 12) + 1).padStart(3, '0') : '001';
+        const sceneNum = state.currentDrop.sceneNumber || '001';
 
-    // 3. NEU: Natives Teilen-Menü aufrufen
+        ctx.fillStyle = '#d97706'; // Gold
+        ctx.font = '700 35px "Inter", sans-serif';
+        ctx.letterSpacing = "15px";
+        ctx.fillText(`SCENE ${sceneNum} • TICKET ${ticketNum}`, 540, 1050);
+
+        ctx.fillStyle = '#3f3f46';
+        ctx.letterSpacing = "3px";
+        ctx.font = '700 28px "Inter", sans-serif';
+        ctx.fillText(`PRODUCED IN ${state.currentDrop.city.toUpperCase()} • ${currentYear}`, 540, 1750);
+        ctx.font = '400 22px "Inter", sans-serif';
+        ctx.fillText(`SCENE DATE: ${formattedDate} • ENTRANCE GRANTED`, 540, 1810);
+
+        fileName = `ThePlot_Scene${sceneNum}_${(state.profile?.alias || 'Stranger').replace(/\s+/g, '')}.png`;
+        shareText = `Entrance Granted: Scene ${sceneNum}.`;
+    } else {
+        // ALIAS-MODUS (Aus den Einstellungen, neutral)
+        ctx.fillStyle = '#71717a'; // Grau
+        ctx.font = '400 35px "Inter", sans-serif';
+        ctx.letterSpacing = "15px";
+        ctx.fillText('ROLE ASSIGNED', 540, 1050);
+
+        ctx.fillStyle = '#3f3f46';
+        ctx.letterSpacing = "3px";
+        ctx.font = '700 28px "Inter", sans-serif';
+        ctx.fillText(`PRODUCED IN ${(state.selectedCity || 'KÖLN').toUpperCase()} • ${currentYear}`, 540, 1750);
+        ctx.font = '400 22px "Inter", sans-serif';
+        ctx.fillText(`ENTRANCE GRANTED`, 540, 1810);
+
+        fileName = `ThePlot_Alias_${(state.profile?.alias || 'Stranger').replace(/\s+/g, '')}.png`;
+        shareText = 'My Role in The Plot.';
+    }
+
+    // Natives Teilen aufrufen
     canvas.toBlob(async (blob) => {
         if (!blob) return window.showToast("Fehler bei der Bildgenerierung.", "error");
         
-        // Sauberen Dateinamen ohne Leerzeichen erstellen
-        const cleanAlias = (state.profile?.alias || 'Stranger').replace(/\s+/g, '');
-        const fileName = `ThePlot_Scene${sceneNum}_${cleanAlias}.png`;
         const file = new File([blob], fileName, { type: 'image/png' });
 
-        // Fallback-Funktion für alte Browser / Desktop
         const downloadFallback = () => {
             const link = document.createElement('a');
             link.download = fileName;
             link.href = canvas.toDataURL('image/png'); 
             link.click();
-            window.showToast("Trophäe heruntergeladen.", "success");
+            window.showToast("Card heruntergeladen.", "success");
         };
 
-        // Prüfen, ob das Handy natives Teilen von Bildern unterstützt
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
-                await navigator.share({
-                    files: [file],
-                    title: 'The Plot.',
-                    text: 'Entrance Granted.',
-                });
-                // Wenn erfolgreich geteilt, braucht es keinen Toast, 
-                // da das Handy-Menü dem Nutzer schon Feedback gibt.
+                await navigator.share({ files: [file], title: 'The Plot.', text: shareText });
             } catch (err) {
-                // AbortError passiert, wenn der Nutzer das Teilen-Menü einfach wieder schließt. Das ignorieren wir.
-                if (err.name !== 'AbortError') { 
-                    downloadFallback();
-                }
+                if (err.name !== 'AbortError') downloadFallback();
             }
         } else {
-            // Natives Teilen nicht möglich -> Klassischer Download
             downloadFallback();
         }
     }, 'image/png');
 };
+
 
 
         window.setApiKey = () => {
@@ -956,6 +967,8 @@ window.setSocialBattery = async (level) => {
             document.getElementById('admin_form_title').innerText = "Drop bearbeiten";
             if (document.getElementById('admin_exclusive')) document.getElementById('admin_exclusive').checked = drop.isExclusive || false;
 
+if (document.getElementById('admin_scene_number')) document.getElementById('admin_scene_number').value = drop.sceneNumber || '001';
+
             window.scrollTo(0,0);
         };
 
@@ -1114,8 +1127,10 @@ window.setSocialBattery = async (level) => {
             const eventTimestamp = new Date(timeInput).getTime();
             const totalSpots = parseInt(document.getElementById('admin_spots').value);
 
-            const dropData = {
+                     const dropData = {
+                sceneNumber: document.getElementById('admin_scene_number') ? document.getElementById('admin_scene_number').value : '001',
                 city: city,
+
                 title: document.getElementById('admin_title').value,
                 vibe: document.getElementById('admin_vibe').value,
                 blurLocation: document.getElementById('admin_blurloc').value,
@@ -1171,17 +1186,43 @@ window.setSocialBattery = async (level) => {
     } catch (e) { window.showToast("Failed to send.", "error"); }
 };
 
-        window.requestCasting = async () => {
-            if (!state.currentDrop) return;
-            window.showToast("Casting-Anfrage wird übermittelt...", "info");
+                // --- BERGHAIN: VIBE CHECK ---
+        window.openVibeCheck = () => { state.showVibeCheck = true; render(); };
+        window.closeVibeCheck = () => { state.showVibeCheck = false; render(); };
+
+        window.submitCastingRequest = async () => {
+            const answer = document.getElementById('vibe_answer').value;
+            if(!answer || answer.trim().length < 5) return window.showToast("Zu kurz. Sei ehrlich.", "error");
+            
+            state.showVibeCheck = false;
+            window.showToast("Wird an den Director übermittelt...", "info");
+            
             try {
                 await updateDoc(doc(db, 'plot_drops', state.currentDrop.id), {
-                    requestedBy: arrayUnion(state.user.uid)
+                    requestedBy: arrayUnion(state.user.uid),
+                    [`applications.${state.user.uid}`]: answer // Speichert die geheime Antwort
                 });
-                window.showToast("Request gesendet. Die Regie prüft deine Rolle.", "success");
+                window.showToast("Request gesendet. Die Tür ist zu. Warte auf Einlass.", "success");
                 render(true);
-            } catch (err) { window.showToast("Systemfehler beim Casting Request.", "error"); }
+            } catch (err) { window.showToast("Systemfehler.", "error"); }
         };
+
+        // --- FIGHT CLUB: STAY PRESENT SCHWUR ---
+        let holdTimer;
+        window.startHoldEnter = () => {
+            const prog = document.getElementById('hold_progress');
+            if(prog) prog.style.width = '100%';
+            holdTimer = setTimeout(() => {
+                window.enterRoomFlow();
+                window.showToast("Du bist jetzt im Moment.", "success");
+            }, 2000); // 2 Sekunden halten
+        };
+        window.cancelHoldEnter = () => {
+            clearTimeout(holdTimer);
+            const prog = document.getElementById('hold_progress');
+            if(prog) prog.style.width = '0%';
+        };
+
 
 
 window.claimTicket = async () => {
@@ -1427,7 +1468,10 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                 </div>
             </div>
                         <form onsubmit="window.createDrop(event)" class="space-y-4">
-                <input id="admin_title" required placeholder="Titel" class="w-full p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-sm">
+                              <div class="flex gap-4">
+                    <input id="admin_scene_number" required placeholder="Nr. (001)" class="w-24 p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-sm font-mono font-bold text-center text-amber-500">
+                    <input id="admin_title" required placeholder="Titel" class="flex-1 p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none focus:border-amber-500 transition text-sm">
+                </div>
                 <textarea id="admin_vibe" required placeholder="Vibe / Storytelling" class="w-full p-4 bg-zinc-950/50 border border-zinc-800 rounded-2xl outline-none h-24 focus:border-amber-500 transition text-sm leading-relaxed"></textarea>
                 
                 <div class="grid grid-cols-2 gap-4">
@@ -1648,7 +1692,10 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                         badgeHtml = `<span class="bg-amber-900/40 text-amber-500 border border-amber-500/30 px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-black shadow-[0_0_15px_rgba(217,119,6,0.15)] flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg> Premium Casting</span>`;
                         const btnText = spotsFull ? 'Casting Closed' : (hasRequested ? 'In Review...' : 'Request Casting');
                         const btnClass = (spotsFull || hasRequested) ? 'bg-zinc-900 text-zinc-600 border border-zinc-800' : 'bg-amber-600 hover:bg-amber-500 text-white shadow-[0_0_20px_rgba(217,119,6,0.3)]';
-                        btnHtml = `<button ${hasRequested ? '' : 'onclick="window.requestCasting()"'} ${(spotsFull || hasRequested) ? 'disabled' : ''} class="w-full ${btnClass} font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest flex justify-center gap-2 items-center">${hasRequested ? '<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>' : ''} ${btnText}</button>`;
+                                                // VORHER: 'onclick="window.requestCasting()"'
+                        // NACHHER: 'onclick="window.openVibeCheck()"'
+                        btnHtml = `<button ${hasRequested ? '' : 'onclick="window.openVibeCheck()"'} ${(spotsFull || hasRequested) ? 'disabled' : ''} class="w-full ${btnClass} font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest flex justify-center gap-2 items-center">${hasRequested ? '<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>' : ''} ${btnText}</button>`;
+
                     } else {
                         badgeHtml = `<span class="bg-blue-900/20 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-black flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg> Casual Plot</span>`;
                         const btnText = spotsFull ? 'Sold Out' : 'Claim Ticket (Instant)';
@@ -1683,7 +1730,20 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                     `;
                 }
 
-            
+                                if (state.showVibeCheck) {
+                        html += `
+                        <div class="fixed inset-0 bg-zinc-950/95 z-[99999] flex flex-col items-center justify-center p-6 backdrop-blur-md pointer-events-auto">
+                            <div class="w-full max-w-sm bg-zinc-900 border border-amber-900/50 p-8 rounded-[32px] shadow-[0_0_50px_rgba(217,119,6,0.15)] animate-fade-in">
+                                <h2 class="text-3xl serif italic gold-text mb-2 text-center">The Vibe Check.</h2>
+                                <p class="text-zinc-400 text-xs mb-8 text-center leading-relaxed">Der Director wählt den Cast sorgfältig. Beantworte diese Frage, um deine Tiefe zu beweisen:</p>
+                                <label class="text-[10px] uppercase tracking-widest text-amber-500 font-bold block mb-3">Welches Lied hörst du, wenn du nachts allein fährst?</label>
+                                <textarea id="vibe_answer" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-zinc-200 focus:border-amber-500 outline-none h-32 mb-6 text-sm" placeholder="Sei ehrlich..."></textarea>
+                                <button onclick="window.submitCastingRequest()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-4 rounded-xl transition uppercase tracking-widest text-xs shadow-lg">Bewerbung einreichen</button>
+                                <button onclick="window.closeVibeCheck()" class="w-full text-zinc-600 hover:text-zinc-400 text-[10px] uppercase tracking-widest mt-4 transition font-bold">Zurück in den Schatten</button>
+                            </div>
+                        </div>`;
+                    }
+
 
                 else if (state.view === 'ticket') {
                     const isTorn = localStorage.getItem(`torn_${state.user?.uid}_${state.currentDrop.id}`) === 'true';
@@ -1699,7 +1759,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
 
                                 <div class="paper-texture bg-gradient-to-br from-zinc-200 to-zinc-400 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center py-16 relative overflow-hidden">
                                     <div class="absolute inset-0 opacity-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiAvPgo8cmVjdCB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSIjMDAwIiAvPjwvc3ZnPg==')] pointer-events-none"></div>
-                                    <div class="uppercase tracking-widest text-[10px] text-zinc-600 font-bold mb-6 relative z-20">Secret Drop</div>
+                                    <div class="uppercase tracking-widest text-[10px] text-zinc-600 font-bold mb-6 relative z-20">SCENE ${state.currentDrop.sceneNumber || '001'}</div>
                                     <h2 class="text-4xl serif italic font-black mb-6 text-zinc-900 text-center leading-tight drop-shadow-sm px-4 relative z-20">${state.currentDrop.title}</h2>
                                     <div class="text-[10px] bg-zinc-900 text-zinc-200 px-4 py-1.5 rounded-full font-bold uppercase tracking-widest mb-4 shadow-inner relative z-20">${state.currentDrop.city}</div>
                                     
@@ -1718,7 +1778,8 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                                 <div class="torn-edge"></div>
                                 
                                 <div class="flex justify-between items-start mb-6 mt-4 relative z-20">
-                                    <div class="uppercase tracking-widest text-[10px] text-zinc-500 font-bold">Admit One</div>
+                                  <div class="uppercase tracking-widest text-[10px] text-zinc-500 font-bold">SCENE ${state.currentDrop.sceneNumber || '001'}</div>
+
                                     <div class="text-[10px] bg-zinc-800 text-zinc-200 px-2 py-1 rounded font-bold uppercase tracking-widest">${state.currentDrop.city}</div>
                                 </div>
                                 
@@ -1749,7 +1810,11 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                                 </div>
                             </div>
 
-                            ${state.currentDrop.phase === 'lobby' ? `<button onclick="window.enterRoomFlow()" class="mt-8 mx-4 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest block w-[calc(100%-32px)] text-center shadow-lg">Lobby Chat öffnen</button>` : state.currentDrop.phase === 'live' ? `<button onclick="window.enterRoomFlow()" class="mt-8 mx-4 bg-amber-600 hover:bg-amber-500 text-white font-bold py-4 rounded-xl transition shadow-[0_0_20px_rgba(217,119,6,0.4)] text-sm uppercase tracking-widest animate-pulse block w-[calc(100%-32px)] text-center">ENTER LIVE SCENE</button>` : `<button onclick="window.enterRoomFlow()" class="mt-8 mx-4 bg-white text-black font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest block w-[calc(100%-32px)] text-center shadow-lg">View Credits (Connect)</button>`}
+                                                       ${state.currentDrop.phase === 'lobby' ? `<button onclick="window.enterRoomFlow()" class="mt-8 mx-4 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-white font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest block w-[calc(100%-32px)] text-center shadow-lg">Lobby Chat öffnen</button>` : state.currentDrop.phase === 'live' ? `<button onmousedown="window.startHoldEnter()" onmouseup="window.cancelHoldEnter()" ontouchstart="window.startHoldEnter()" ontouchend="window.cancelHoldEnter()" onmouseleave="window.cancelHoldEnter()" class="mt-8 mx-4 bg-zinc-950 border border-amber-900/50 text-amber-500 font-bold py-5 rounded-xl transition shadow-[0_0_20px_rgba(217,119,6,0.15)] text-[10px] uppercase tracking-widest block w-[calc(100%-32px)] text-center relative overflow-hidden group select-none cursor-pointer">
+                                <div id="hold_progress" class="absolute left-0 top-0 bottom-0 bg-amber-600/30 w-0 transition-all duration-[2000ms] ease-linear"></div>
+                                <span class="relative z-10 flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg> Hold to swear to stay present</span>
+                            </button>` : `<button onclick="window.enterRoomFlow()" class="mt-8 mx-4 bg-white text-black font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest block w-[calc(100%-32px)] text-center shadow-lg">View Credits (Connect)</button>`}
+
                             <button onclick="window.shareScene()" class="w-full text-center mt-6 text-xs text-zinc-500 hover:text-amber-500 uppercase tracking-widest transition flex justify-center items-center gap-2 pb-10"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg> Share your Scene</button>
                         `;
                     }
@@ -1907,7 +1972,12 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                             <div class="absolute inset-0 flex flex-col bg-[#09090b] z-50 items-center justify-center p-6 text-center pointer-events-auto pb-6">
                                 <h2 class="text-4xl serif italic mb-4 gold-text">Die Szene ist im Kasten.</h2>
                                 <p class="text-zinc-400 text-sm max-w-sm leading-relaxed mb-12">Die geführte Story ist vorbei. Ihr habt es toll gemacht. Der Abend gehört jetzt euch: Tauscht euch aus, trinkt in Ruhe aus, oder verabschiedet euch.</p>
-                                <button onclick="window.advanceToCredits()" class="bg-zinc-100 text-zinc-900 px-8 py-4 rounded-xl font-bold hover:bg-white transition shadow-[0_0_15px_rgba(255,255,255,0.1)] uppercase tracking-widest text-xs">Wen möchtest du wiedersehen?</button>
+                                <button onclick="window.advanceToCredits()" class="bg-zinc-100 text-zinc-900 px-8 py-4 rounded-xl font-bold hover:bg-white transition shadow-[0_0_15px_rgba(255,255,255,0.1)] uppercase tracking-widest text-xs">Wen möchtest du wiedersehen?</button> 
+                                <button onclick="window.generateShareCard('ticket')" class="w-full bg-amber-900/10 border border-amber-900/30 text-amber-500 font-bold py-4 rounded-xl mt-4 uppercase tracking-widest text-xs hover:bg-amber-900/20 transition shadow-lg flex items-center justify-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+    Trophäe exportieren
+</button>
+
                             </div>
                         `;
                     } else if (state.currentDrop.phase === 'credits') {
@@ -1993,7 +2063,7 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                                         <button onclick="window.regenerateAlias()" class="text-xs bg-amber-900/50 text-amber-400 px-3 py-1.5 rounded hover:bg-amber-800/50 transition border border-amber-700/50">Reroll</button> 
                                     </div>
                                     
-                                    <button onclick="window.generateShareCard()" class="w-full py-4 bg-amber-900/10 text-amber-500 rounded-2xl font-bold uppercase text-[10px] tracking-widest border border-amber-900/30 hover:bg-amber-900/20 transition flex items-center justify-center gap-2">
+                                 <button onclick="window.generateShareCard('alias')" class="w-full py-4 bg-amber-900/10 text-amber-500 rounded-2xl font-bold uppercase text-[10px] tracking-widest border border-amber-900/30 hover:bg-amber-900/20 transition flex items-center justify-center gap-2">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                                         Export Alias Card
                                     </button>
