@@ -1847,9 +1847,9 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
                       <div class="text-center mb-10">
   <h1 class="text-4xl serif italic mb-3">Claim your storyline.</h1>
   
-  <p id="rotating-claim"
-     class="text-zinc-400 text-sm leading-relaxed transition-all duration-700 opacity-0 translate-y-2">
-  </p>
+<p id="rotating-claim">
+  Loading the scene…
+</p>
 </div>
                         <form onsubmit="window.handleAuth(event)" class="space-y-4">
                             <input id="auth_email" type="email" placeholder="Email" required value="${state.tempEmail || ''}" class="w-full p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl outline-none focus:border-amber-500/50 text-zinc-200 transition">
@@ -2301,8 +2301,8 @@ const archivedDrops = state.allDrops.filter(d => d.eventTime <= sevenDaysAgo);
 
     </script>
     
-     <script>
-document.addEventListener("DOMContentLoaded", function () {
+   <script>
+window.addEventListener("load", function () {
 
   const claims = [
     "Echte Begegnungen.<br>Mehr als Dating.<br>Ein Plot.",
@@ -2310,17 +2310,18 @@ document.addEventListener("DOMContentLoaded", function () {
     "Du wurdest gecastet.<br>Was passiert, passiert.",
     "Kuratiert statt zufällig.",
     "Vielleicht ein Date.<br>Vielleicht ein Kapitel.",
-    "Atmosphäre statt Algorithmus.",
-    "Limitierte Rollen.<br>Echte Energie."
+    "Atmosphäre statt Algorithmus."
   ];
 
   const el = document.getElementById("rotating-claim");
 
+  if (!el) return; // Falls ID falsch ist → Script bricht sauber ab
+
   function changeClaim() {
+    const random = claims[Math.floor(Math.random() * claims.length)];
     el.style.opacity = 0;
 
     setTimeout(() => {
-      const random = claims[Math.floor(Math.random() * claims.length)];
       el.innerHTML = random;
       el.style.opacity = 1;
     }, 300);
