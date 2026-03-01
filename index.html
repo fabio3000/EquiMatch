@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>The Plot | Your life is a movie.</title>
-              <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2309090b'/%3E%3Ctext y='65' x='50' font-family='serif' font-style='italic' font-weight='bold' font-size='60' fill='%23f4f4f5' text-anchor='middle'%3EP.%3C/text%3E%3C/svg%3E">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%2309090b'/%3E%3Ctext y='65' x='50' font-family='serif' font-style='italic' font-weight='bold' font-size='60' fill='%23f4f4f5' text-anchor='middle'%3EP.%3C/text%3E%3C/svg%3E">
-    <meta name="apple-mobile-web-app-title" content="The Plot.">
-
-
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
@@ -200,10 +195,46 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
 
     <!-- Versionsnummer -->
     <div class="fixed bottom-4 left-4 z-50 text-[10px] text-zinc-600 font-mono select-none pointer-events-none">
-        0.9.12 Beta
+        0.9.43 Beta
     </div>
    <script src="https://www.paypal.com/sdk/js?client-id=AboxAT2qskA0lY5-23Kj2tu_qY3bOK57rq_LbhtE_cdVOBT37fSHGacBKjgl-zx1XcJM9AZql96OCwc8&currency=EUR"></script>
     <script type="module">
+            // --- FAVICON & APPLE ICON FIX (PNG GENERATOR) ---
+        function createFavicon() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            // Schwarzer Hintergrund
+            ctx.fillStyle = '#09090b';
+            ctx.fillRect(0, 0, 256, 256);
+            
+            // "The Plot." Text
+            ctx.fillStyle = '#f4f4f5';
+            ctx.font = 'italic bold 52px "Playfair Display", serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('The Plot.', 128, 138);
+            
+            const url = canvas.toDataURL('image/png');
+            
+            // Standard Favicon für den Tab (ersetzt die Weltkugel)
+            let link = document.querySelector("link[rel~='icon']");
+            if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+            link.type = 'image/png';
+            link.href = url;
+            
+            // Apple Home Screen Icon (Das graue "P" wird ersetzt)
+            let appleLink = document.querySelector("link[rel='apple-touch-icon']");
+            if (!appleLink) { appleLink = document.createElement('link'); appleLink.rel = 'apple-touch-icon'; document.head.appendChild(appleLink); }
+            appleLink.href = url;
+        }
+
+        // Warten, bis die schöne Schrift geladen ist, dann sofort das Icon generieren
+        if (document.fonts) { document.fonts.ready.then(() => setTimeout(createFavicon, 100)); }
+        else { setTimeout(createFavicon, 500); }
+        // ------------------------------------------------
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, deleteUser } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, addDoc, onSnapshot, getDocs, updateDoc, deleteDoc, query, where, arrayUnion } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
