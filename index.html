@@ -595,26 +595,14 @@ async function generateUniqueAlias() {
         if (state.view === 'loading' || state.view === 'auth') state.view = 'home'; 
         checkRouting();
         render(true);
-    } else {
-        // Profil existiert noch nicht -> Frischer Cast!
-        const newAlias = await generateUniqueAlias();
-        state.profile = { 
-            hasPremium: false, 
-            tickets: [], 
-            completedDrops: [], 
-            alias: newAlias, 
-            isAdmin: false, 
-            city: state.selectedCity || "Köln",
-            extraTickets: 0, 
-            monthlyTicketsUsed: 0
-        };
-        
-        await setDoc(doc(db, 'plot_users', user.uid), state.profile);
-        window.showToast(`Rolle zugewiesen: ${newAlias}`, "success");
-        state.view = 'home';
+     } else {
+        // Profil existiert noch nicht -> Stopp! Ab ins Casting-Onboarding.
+        state.view = 'onboarding';
         render(true);
     }
 });
+
+    
 
                                                 const unsubDrops = onSnapshot(collection(db, 'plot_drops'), (snap) => {
                             const allDrops = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -1064,6 +1052,61 @@ window.setSocialBattery = async (level) => {
         window.showToast(err.message, "error"); 
         state.view = 'auth'; isRegistering = false; render();
         if(btn) { btn.disabled = false; btn.innerText = state.authMode === 'login' ? 'Enter' : 'Join the Cast'; }
+    }
+};
+
+
+window.submitOnboarding = async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    const yearStr = document.getElementById('onboard_year').value;
+    const gender = document.getElementById('onboard_gender').value;
+    
+    if(!yearStr || !gender) return window.showToast("Bitte fülle alles aus.", "error");
+    
+    const birthYear = parseInt(yearStr);
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - birthYear;
+    
+    // THE HARD GATE: Unter 18? Account sofort vernichten.
+    if (age < 18) {
+        window.showToast("Zugang verweigert. The Plot ist 18+.", "error");
+        if (auth.currentUser) {
+            await deleteUser(auth.currentUser); 
+            signOut(auth);
+        }
+        state.view = 'auth';
+        render(true);
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Casting Role...";
+
+    try {
+        const newAlias = await generateUniqueAlias();
+        state.profile = { 
+            hasPremium: false, 
+            tickets: [], 
+            completedDrops: [], 
+            alias: newAlias, 
+            isAdmin: false, 
+            city: state.selectedCity || "Köln",
+            extraTickets: 0, 
+            monthlyTicketsUsed: 0,
+            birthYear: birthYear,
+            gender: gender // Speichert die Rolle für späteres 50/50 Matching
+        };
+        
+        await setDoc(doc(db, 'plot_users', state.user.uid), state.profile);
+        window.showToast(`Rolle zugewiesen: ${newAlias}`, "success");
+        state.view = 'home';
+        checkRouting();
+        render(true);
+    } catch(err) {
+        window.showToast("Systemfehler beim Casting.", "error");
+        btn.disabled = false;
+        btn.innerText = "Casting abschließen";
     }
 };
 
@@ -2072,6 +2115,37 @@ Verify
 
 `;
 }
+
+else if (state.view === 'onboarding') {
+    html += `
+        <div class="text-center mb-10 mt-10 animate-fade-in">
+            <h1 class="text-4xl serif italic mb-3 gold-text">The Casting.</h1>
+            <p class="text-zinc-400 text-sm leading-relaxed max-w-xs mx-auto">Um die Balance und Sicherheit der Szenen zu garantieren, brauchen wir zwei Details von dir.</p>
+        </div>
+        
+        <form onsubmit="window.submitOnboarding(event)" class="space-y-6 max-w-sm mx-auto animate-fade-in relative z-20">
+            <div>
+                <label class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block mb-2 text-left">Geburtsjahr (18+)</label>
+                <input id="onboard_year" type="number" min="1950" max="2010" placeholder="z.B. 1998" required class="w-full p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl outline-none focus:border-amber-500/50 text-zinc-200 transition text-center text-xl tracking-widest font-mono shadow-inner">
+            </div>
+            
+            <div>
+                <label class="text-[10px] uppercase tracking-widest text-zinc-500 font-bold block mb-2 text-left">Deine Rolle</label>
+                <select id="onboard_gender" required class="w-full p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl outline-none focus:border-amber-500/50 text-zinc-400 text-center text-lg font-bold appearance-none cursor-pointer shadow-inner">
+                    <option value="" disabled selected>Wähle dein Geschlecht...</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                    <option value="nonbinary">Non-Binary</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-4 rounded-xl transition text-sm uppercase tracking-widest mt-8 shadow-[0_0_20px_rgba(217,119,6,0.3)]">
+                Szene betreten
+            </button>
+        </form>
+    `;
+}
+
                                else if (state.view === 'home') {
                     const drop = state.currentDrop;
                     const isExclusive = drop.isExclusive;
