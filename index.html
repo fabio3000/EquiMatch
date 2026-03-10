@@ -807,10 +807,14 @@ window.setSocialBattery = async (level) => {
     
     if (!alreadyEntered) {
         try {
-            await addDoc(collection(db, `plot_messages_${state.currentDrop.id}`), { 
-                senderId: 'system', senderAlias: 'System', 
+            // FIX: Wir senden jetzt an die zentrale Collection "messages"
+            await addDoc(collection(db, "messages"), { 
+                senderId: 'system', 
+                senderAlias: 'System', 
                 text: `${state.profile.alias} hat den Raum betreten. Vibe: ${statusText}`, 
-                timestamp: Date.now(), isSystem: true 
+                dropId: state.currentDrop.id, // EXTREM WICHTIG: Damit der Filter sie findet!
+                timestamp: Date.now(), 
+                isSystem: true 
             });
         } catch(e) { console.error(e); }
     }
@@ -818,6 +822,7 @@ window.setSocialBattery = async (level) => {
     window.showToast(`${level} gesetzt.`, 'info');
     window.setView('room');
 };
+
 
 
 
@@ -1496,12 +1501,13 @@ try {
     // NEU: Auch hier der Filter für das Archiv
     const archiveQuery = query(collection(db, "messages"), where("dropId", "==", dropId));
 
-    window.unsubChat = onSnapshot(archiveQuery, (msgSnap) => {
-        state.messages = msgSnap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
-        render(); scrollToBottom();
-    });
-    render();
-};
+// NEU (Kopieren & Ersetzen):
+window.unsubChat = onSnapshot(chatQuery, (msgSnap) => {
+    state.messages = msgSnap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
+    // Wir erzwingen das Render, damit die Nachricht sofort erscheint:
+    if(state.view === 'room') { render(true); scrollToBottom(); } 
+});
+
 
 
         window.sendMessage = async (dropIdOverride = null) => {
