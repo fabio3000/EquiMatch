@@ -348,9 +348,10 @@ window.sendSMS = async (e) => {
 
         window.confirmationResult = await signInWithPhoneNumber(
             auth,
-            phone,
+            fullPhone, // <-- Hier stand vorher 'phone'
             window.recaptchaVerifier
         );
+
 
         state.authStep = 'code';
 
