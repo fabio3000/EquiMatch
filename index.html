@@ -667,11 +667,13 @@ window.activatePager = async () => {
             where("dropId", "==", state.currentDrop.id)
         );
 
-        window.unsubChat = onSnapshot(chatQuery, (msgSnap) => {
-            state.messages = msgSnap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
-            if(state.view === 'room') { render(); scrollToBottom(); }
-        });
-        // -----------------------------------------------------------
+       // Ersetze den Listener-Teil in unsubDrops (ca. Zeile 538) durch dies:
+window.unsubChat = onSnapshot(chatQuery, (msgSnap) => {
+    state.messages = msgSnap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
+    // Das 'true' bricht die Fokus-Sperre und zeigt die Nachricht sofort an
+    if(state.view === 'room') { render(true); scrollToBottom(); } 
+});
+
 
         if(!countdownInterval) countdownInterval = setInterval(automatedPacingLogic, 1000);
     } else {
@@ -1493,20 +1495,24 @@ try {
 
 
 
-     window.openPastChat = (dropId) => {
+    window.openPastChat = (dropId) => {
     state.openChatId = dropId;
     state.messages = []; 
     if (window.unsubChat) window.unsubChat();
 
-    // NEU: Auch hier der Filter für das Archiv
+    // Wir suchen in "messages", wo die dropId passt
     const archiveQuery = query(collection(db, "messages"), where("dropId", "==", dropId));
 
-// NEU (Kopieren & Ersetzen):
-window.unsubChat = onSnapshot(chatQuery, (msgSnap) => {
-    state.messages = msgSnap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
-    // Wir erzwingen das Render, damit die Nachricht sofort erscheint:
-    if(state.view === 'room') { render(true); scrollToBottom(); } 
-});
+    window.unsubChat = onSnapshot(archiveQuery, (msgSnap) => {
+        state.messages = msgSnap.docs.map(d => d.data()).sort((a,b) => a.timestamp - b.timestamp);
+        // Wir erzwingen das Render, damit das Archiv sofort erscheint
+        render(true); 
+        scrollToBottom();
+    });
+    render(true);
+};
+
+
 
 
 
