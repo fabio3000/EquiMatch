@@ -1,7 +1,6 @@
 importScripts('https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.6.1/firebase-messaging-compat.js');
 
-// Deine exakten Projekt-Daten
 firebase.initializeApp({
   apiKey: "AIzaSyDtwsvmYSONjFufhbJ5I8G_RAMffnh7re0",
   projectId: "theplot-app",
@@ -10,15 +9,5 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-
-// Dieser Block fängt Nachrichten ab, wenn die App im Hintergrund ist
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification.title || 'The Plot.';
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: '/P. Logo.png'
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+// WICHTIG: Hier unten darf NICHTS mehr stehen! 
+// Kein showNotification!
