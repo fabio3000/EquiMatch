@@ -200,7 +200,7 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
         </div>
     </div>
 
-    <!-- Dev Menu -->
+    
     <div id="dev-menu" class="fixed bottom-16 left-4 z-[9990] bg-zinc-900/90 border border-zinc-700 p-4 rounded-xl backdrop-blur-md opacity-20 hover:opacity-100 transition-opacity pointer-events-auto shadow-2xl hidden max-w-[200px]">
         <div class="text-[9px] uppercase tracking-widest text-amber-500 font-bold text-center mb-2">Director's Time Machine</div>
         <div class="flex flex-col gap-2">
@@ -217,7 +217,7 @@ h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
         <button onclick="window.devSkipToLastQuest()" class="bg-red-900/80 text-red-200 border border-red-700/50 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold shadow-lg hover:bg-red-800 transition">Dev: Finale (5s)</button>
     </div>
 
-    <!-- Versionsnummer -->
+    
     <div class="fixed bottom-4 left-4 z-50 text-[10px] text-zinc-600 font-mono select-none pointer-events-none">
         0.9.43 Beta
     </div>
@@ -2765,7 +2765,7 @@ else if (state.view === 'onboarding') {
 
 <div id="ios-install-prompt" class="install-prompt-hidden">
     <div class="install-prompt-content">
-        <span class="close-btn" onclick="document.getElementById('ios-install-prompt').style.display='none'">✕</span>
+<span class="close-btn" onclick="closeInstallPrompt()">✕</span>
         <h3>Hol dir die App! 🎬</h3>
         <p>Für Push-Benachrichtigungen brauchst du die App auf deinem Homescreen:</p>
         
@@ -2792,12 +2792,12 @@ else if (state.view === 'onboarding') {
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    width: 90%;
-    max-width: 400px;
+    width: 95%; /* Nimmt mehr Breite ein */
+    max-width: 500px; /* Erhöht von 400px auf 500px für mehr Breite */
     background: rgba(30, 30, 30, 0.98);
     border: 1px solid #444;
     border-radius: 16px;
-    padding: 20px;
+    padding: 15px; /* Reduziert von 20px, macht das Fenster flacher */
     color: white;
     box-shadow: 0px 10px 30px rgba(0,0,0,0.6);
     z-index: 9999;
@@ -2810,36 +2810,41 @@ else if (state.view === 'onboarding') {
     bottom: -400px !important;
 }
 
-.install-prompt-content h3 { margin: 0 0 10px 0; font-size: 18px; text-align: center;}
-.install-prompt-content p { margin: 0 0 20px 0; font-size: 14px; color: #ccc; text-align: center;}
-.close-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; color: #888; font-size: 18px; }
+.install-prompt-content h3 { margin: 0 0 5px 0; font-size: 16px; text-align: center;} /* Abstände und Schrift verkleinert */
+.install-prompt-content p { margin: 0 0 12px 0; font-size: 12px; color: #ccc; text-align: center;} /* Abstände und Schrift verkleinert */
+.close-btn { position: absolute; top: 12px; right: 15px; cursor: pointer; color: #888; font-size: 18px; }
 
 .install-step {
     display: flex;
     align-items: center;
-    margin-bottom: 15px;
+    margin-bottom: 8px; /* Weniger Abstand zwischen den Boxen */
     background: rgba(255, 255, 255, 0.05);
-    padding: 10px;
+    padding: 8px 12px; /* Flacherer Innenabstand */
     border-radius: 10px;
 }
 
 .step-icon {
     flex-shrink: 0;
-    width: 40px;
-    height: 40px;
+    width: 32px; /* Icon-Box kleiner gemacht */
+    height: 32px; /* Icon-Box kleiner gemacht */
     background: #000;
-    border-radius: 10px;
+    border-radius: 8px;
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-right: 15px;
+    margin-right: 12px;
     color: #fff;
     border: 1px solid #333;
 }
 
+.step-icon svg {
+    width: 18px; /* Das eigentliche SVG-Icon etwas verkleinert */
+    height: 18px;
+}
+
 .step-text {
-    font-size: 14px;
-    line-height: 1.4;
+    font-size: 12px; /* Text in den Boxen verkleinert */
+    line-height: 1.3;
     color: #eee;
 }
 </style>
@@ -2848,7 +2853,6 @@ else if (state.view === 'onboarding') {
 
 
 <script>
-// JS: Prüft, ob es ein iPhone ist und die App NICHT auf dem Homescreen läuft
 document.addEventListener("DOMContentLoaded", () => {
     const isIos = () => {
         const userAgent = window.navigator.userAgent.toLowerCase();
@@ -2859,15 +2863,28 @@ document.addEventListener("DOMContentLoaded", () => {
         return ('standalone' in window.navigator) && (window.navigator.standalone);
     };
 
-    if (isIos() && !isStandalone()) {
-        // Zeigt das Popup nach 2 Sekunden elegant an
+    // Prüfen, ob das Popup bereits geschlossen wurde
+    const isDismissed = localStorage.getItem('iosPromptClosed');
+
+    if (isIos() && !isStandalone() && !isDismissed) {
         setTimeout(() => {
             const prompt = document.getElementById('ios-install-prompt');
-            prompt.classList.remove('install-prompt-hidden');
+            if(prompt) prompt.classList.remove('install-prompt-hidden');
         }, 2000);
     }
 });
+
+// Funktion zum Schließen und Merken der Entscheidung
+function closeInstallPrompt() {
+    const prompt = document.getElementById('ios-install-prompt');
+    if(prompt) {
+        prompt.classList.add('install-prompt-hidden'); // Sanftes Ausblenden
+        setTimeout(() => prompt.style.display = 'none', 500); // Danach unsichtbar machen
+    }
+    localStorage.setItem('iosPromptClosed', 'true'); // Entscheidung im Browser speichern
+}
 </script>
+
 
 
 </body>
